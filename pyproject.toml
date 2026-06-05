@@ -1,0 +1,20 @@
+[project]
+name = "tiny-recursive-gemma"
+version = "0.1.0"
+description = "Recursive reasoning for code generation using small Gemma models on Apple Silicon."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "mlx>=0.16.1",
+    "mlx-lm>=0.16.0",
+    "google-genai>=0.2.2",
+    "datasets>=3.0.0",
+    "tqdm>=4.66.0",
+    "numpy>=1.26.0",
+    "pyopenssl>=26.2.0",
+    "pytest>=9.0.3",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
