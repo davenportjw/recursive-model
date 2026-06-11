@@ -1,4 +1,6 @@
 import argparse
+import os
+from dotenv import load_dotenv
 import mlx.core as mx
 from mlx_lm import load, generate
 from mlx_lm.tuner import train
@@ -23,6 +25,7 @@ def main(model_path, data_path, iters, lora_layers):
     # Note: MLX LM's default training script uses YAML/CLI arguments. 
     # For a custom script, we setup a dict of args.
     
+    adapter_path = os.getenv("ADAPTER_PATH", "adapters")
     training_args = {
         "model": model_path,
         "train": True,
@@ -33,7 +36,7 @@ def main(model_path, data_path, iters, lora_layers):
         "learning_rate": 1e-4,
         "steps_per_report": 5,
         "save_every": 20,
-        "adapter_path": "adapters",
+        "adapter_path": adapter_path,
         "max_seq_length": 2048 # Adjust if OOM
     }
     
@@ -47,9 +50,10 @@ def main(model_path, data_path, iters, lora_layers):
     print(f"Configuration: {training_args}")
     
     # In a real scenario, we might just call the mlx_lm CLI directly via subprocess
+    import sys
     import subprocess
     cmd = [
-        "python", "-m", "mlx_lm", "lora",
+        sys.executable, "-m", "mlx_lm", "lora",
         "--model", model_path,
         "--train",
         "--data", data_path,
@@ -57,15 +61,20 @@ def main(model_path, data_path, iters, lora_layers):
         "--batch-size", "1",
         "--num-layers", str(lora_layers),
         "--max-seq-length", "2048",
-        "--adapter-path", "adapters"
+        "--adapter-path", adapter_path
     ]
     
     print("Running command:", " ".join(cmd))
     subprocess.run(cmd)
 
 if __name__ == "__main__":
+    load_dotenv()
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", default="google/gemma-4-E2B-it-qat-q4_0-unquantized", help="Model path/name")
+    parser.add_argument(
+        "--model", 
+        default=os.getenv("BASE_MODEL", "google/gemma-4-E2B-it-qat-q4_0-unquantized"), 
+        help="Model path/name"
+    )
     parser.add_argument("--data", default="data", help="Directory containing train.jsonl")
     parser.add_argument("--iters", type=int, default=50, help="Number of training iterations")
     parser.add_argument("--lora-layers", type=int, default=8, help="Number of LoRA layers")
