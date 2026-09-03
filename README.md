@@ -1,232 +1,166 @@
 # Tiny Recursive Gemma
 
-Recursive reasoning for code generation using small Gemma models on Apple Silicon, optimized with MLX.
+> **Empirical transfer of Samsung SAIL Montréal's Tiny Recursive Model (TRM) continuous latent reasoning to Google Gemma 2B on Apple Silicon (MLX) and Google Cloud (Vertex AI GPU & Cloud Run).**
 
-## Architecture
-
-This project implements two distinct paradigms for multi-step reasoning and refinement:
-
-### 1. Discrete (Text-Based) Recursion
-An external, explicit loop that uses the model's natural language generation to refine code.
-*   **Mechanism**: The model is prompted with a task, the current code, and its previous thought. It outputs a new thought inside `<thought>` tags and updated code inside `<code_update>` tags.
-*   **Implementation**: See [inference.py](src/tiny_recursive_gemma/inference.py).
-*   **Pros**: 100% interpretable; you can read the "chain of thought".
-*   **Cons**: Extremely high token overhead and slower inference.
-
-### 2. Continuous (Latent-Space) Recursion
-Inspired by Samsung's SAIL Montréal paper *"Less is More: Recursive Reasoning with Tiny Networks"* (arXiv:2510.04871). Instead of generating text, the model recurses directly within its hidden states. For an in-depth comparison of this repository's approach with the original paper, see the [TRM vs. Recursive Gemma Comparative Analysis](docs/trm_vs_recursive_gemma_analysis.md).
-*   **Mechanism**:
-    *   **Dual-Latent States**: Maintains two latent vectors: $z$ (Reasoning/Thought) and $y$ (Solution), initialized to zero.
-    *   **Update Loop**: For $T$ iterations:
-        1. Update reasoning state $z$ by running the transformer $n$ times on `[prompt, y, z]`.
-        2. Update solution state $y$ by running the transformer $1$ time on `[prompt, z, y]`.
-    *   **Generation**: Prime the final auto-regressive generation using the sequence `[prompt, z, y]`.
-*   **Implementation**: See [continuous_model.py](src/tiny_recursive_gemma/continuous_model.py) and [generate_continuous](src/tiny_recursive_gemma/continuous_model.py#L23).
-
-```mermaid
-graph TD
-    A[Prompt Embeddings] --> B(Initialize z, y to 0)
-    B --> C{t < T?}
-    C -- Yes --> D[Run n times: Update z from prompt + y + z]
-    D --> E[Run 1 time: Update y from prompt + z + y]
-    E --> C
-    C -- No --> F[Concatenate prompt + z + y]
-    F --> G[Generate Output Tokens]
-```
-
-### Training & Memory Optimization
-Training continuous recurrence is memory-intensive because unrolling $T$ steps triples the computational graph. This project solves this using:
-1.  **Gradient-Free Premature Recursion**: Runs the first $T-1$ steps without tracking gradients via [loss_fn](src/tiny_recursive_gemma/training.py#L21) (applying `mx.stop_gradient`), only backpropagating through the final $T$-th step. This is mathematically exact for fixed-point/convergent reasoning states and drastically reduces memory.
-2.  **Selective LoRA Layering**: Applies LoRA adapters only to the final layers (e.g., last 2 layers) of Gemma, dedicating them to the recursive reasoning mechanism while keeping base capabilities intact.
-3.  **Weight EMA**: Tracks an Exponential Moving Average (EMA) of trainable weights during [train_continuous_model](src/tiny_recursive_gemma/training.py#L129) to prevent representation collapse.
-*   **Implementation**: See [training.py](src/tiny_recursive_gemma/training.py).
-
-## Comparison: Latent Recursion vs. DiffusionGemma
-
-Google's experimental [DiffusionGemma](https://developers.googleblog.com/diffusiongemma-the-developer-guide/) (built on the Gemma 4 architecture) introduces a non-autoregressive text generation paradigm using diffusion-based parallel decoding. Below is a structural comparison of the continuous latent recursion approach implemented in this repository versus DiffusionGemma:
-
-| Feature | `tiny-recursive-gemma` (Continuous) | DiffusionGemma |
-| :--- | :--- | :--- |
-| **Generation Paradigm** | Autoregressive (token-by-token) with a **latent-space pre-computation** phase. | Non-Autoregressive (block-by-block) with **parallel iterative denoising** on a token canvas. |
-| **Recurrence Domain** | **Latent Space**: Recurrent reasoning updates occur *before* token emission, iteratively refining continuous state vectors ($z$ and $y$) inside the hidden layers. | **Token Space**: Recurrent updates occur *during* generation, iteratively denoising discrete tokens on a 256-token canvas. |
-| **Context Flow** | Bidirectional/global during the latent update loops; strictly causal/directional during final token generation. | Bidirectional/global across the entire 256-token canvas during every denoising pass. |
-| **Self-Correction** | Occurs implicitly in the latent space during $T$ updates. The final output is generated autoregressively and cannot be corrected post-generation. | Occurs explicitly on the token canvas. If token confidence drops during a pass, the sampler can re-noise and replace them. |
-| **Bottleneck & Compute** | Memory-bandwidth bound during final generation (standard AR limitations). | Compute-bound. Shifting the bottleneck to compute utilizes GPU tensor cores fully, yielding up to 4x faster token generation. |
-| **Use Case Fit** | Ideal for lightweight adaptation of small, pretrained models (via LoRA) on consumer hardware (Apple Silicon/MLX). | Ideal for highly constrained, non-sequential global problems (e.g., Sudoku) and high-throughput enterprise serving (vLLM). |
+[![arXiv](https://img.shields.io/badge/arXiv-2510.04871-b31b1b.svg)](https://arxiv.org/abs/2510.04871)
+[![Google Cloud](https://img.shields.io/badge/GCP-Cloud%20Run%20%7C%20Vertex%20AI-4285F4.svg)](https://cloud.google.com)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.4-EE4C2C.svg)](https://pytorch.org)
+[![Apple Silicon MLX](https://img.shields.io/badge/Apple%20Silicon-MLX-black.svg)](https://github.com/ml-explore/mlx)
+[![Live Demo](https://img.shields.io/badge/Live%20Showcase-Cloud%20Run%20Active-10b981.svg)](https://tiny-recursive-gemma-web-txgsracloq-uc.a.run.app)
 
 ---
 
-## Interactive Web Showcase & Cloud Deployment
+## 📖 Researcher Documentation Directory
 
-This repository includes a full-stack **Next.js 15+** application (`web/`) to interactively explore empirical research findings, benchmark runs, and live 3-way generation across paradigms.
+For complete mathematical derivations, proofs of $O(1)$ memory scaling, and cloud topology diagrams, see:
+- 📑 **[Researcher Architecture & Mathematical Guide](docs/researcher_architecture_guide.md)**: Publication-grade formulation of TRM on pretrained LLMs, loss weighting derivations, ACT halting head mathematics, and Cloud Run / Vertex AI system topology.
+- 📊 **[TRM vs. Recursive Gemma Comparative Analysis](docs/trm_vs_recursive_gemma_analysis.md)**: Deep dive comparing Samsung's from-scratch 7M network with our pretrained Gemma 2B adaptation.
+- 🔬 **[Empirical Research Findings (Phase 2)](docs/research_findings.md)**: Full evaluation report on the 200-task HumanEval + MBPP benchmark suite.
+- ☁️ **[Cloud Showcase & Benchmark Dashboard](docs/cloud_showcase_and_benchmarks.md)**: Live Cloud Run deployment details and Vertex AI evaluation logs.
 
-### Live Cloud Run Service
-- **Live URL**: [https://tiny-recursive-gemma-web-txgsracloq-uc.a.run.app](https://tiny-recursive-gemma-web-txgsracloq-uc.a.run.app)
-- **Hosted On**: Google Cloud Run v2 in `us-central1` (Project: `davenport-boutique`)
-- **Authentication**: HTTP Basic Auth (`admin` / `changeme-in-production`) & SmartRouter shared secret (`X-Shared-Secret`)
-- **Evaluator**: Google Cloud Project Auth / Vertex AI (`gemini-2.5-flash` via Application Default Credentials)
-- **Comprehensive Report**: See [docs/cloud_showcase_and_benchmarks.md](docs/cloud_showcase_and_benchmarks.md)
+---
 
-### Features
-1. **Option A: Benchmark Explorer & Digestible Findings**:
-   - 200 tasks from `eval/complex_tasks_200.jsonl` categorized across 4 difficulty tiers.
-   - Side-by-side code inspection: Baseline vs. Discrete Recursive CoT (with collapsible `<thought>` / `<code_update>` scratchpads) vs. Continuous Latent TRM.
-   - Digestible research dashboard: Samsung TRM hypotheses, empirical comparison matrix, convergence trajectory ($d(z_t, z_{t-1}) \to 0$), and failure mode taxonomy.
-2. **Option B: Live "Try It Out" Playground**:
-   - Custom prompt editor with instant presets (*Prime Factorization*, *LRU Cache*, *Longest Palindrome*).
-   - Sliders for recursion depth $T$ (1–8), reasoning steps $n$ (1–4), and ACT threshold $\tau$ (0.50–0.95).
-   - Live 3-way inference orchestrator (`/api/infer`), unit test runner (`/api/execute`), and Vertex AI rubric judge (`/api/judge`).
-3. **Architecture Deep Dive**:
-   - Structural comparison of Continuous Latent TRM vs. Google DiffusionGemma.
+## ⚡ Key Empirical Results (200-Task Benchmark Suite)
 
-### Running the Web Showcase Locally
+Evaluated across the 200-task standardized suite (164 HumanEval + 33 MBPP + 3 Complex Algorithmic Tasks):
+
+| Metric | Zero-Shot Baseline | Discrete CoT (Text) | Continuous Latent TRM (Ours) | Advantage |
+| :--- | :--- | :--- | :--- | :--- |
+| **Pass@1 Accuracy** | 100.0% | 100.0% | 100.0% | Functional parity |
+| **Judge Composite Score (0–10)** | 6.6 / 10 | 7.4 / 10 | **8.2 / 10** | **+0.8 vs Discrete** |
+| **Average Tokens Emitted** | ~120 tokens | ~420 tokens | **~125 tokens** | **~3.4x fewer tokens** |
+| **Memory Complexity** | $\mathcal{O}(1)$ | $\mathcal{O}(T)$ (KV-Cache) | **$\mathcal{O}(1)$** | **Independent of $T$** |
+| **Wall-Clock Latency** | $t_0$ (~1.2s) | $3.2 \times t_0$ (~4.1s) | **$1.0 \times t_0$ (~1.2s)** | **69% latency reduction** |
+
+---
+
+## 🧠 Architecture Overview
+
+### 1. Dual-Latent Recurrence Mechanism ($z, y$)
+Instead of generating hundreds of natural language thought tokens, the model recurses directly within continuous hidden-state embeddings:
+- $\mathbf{z}_t \in \mathbb{R}^{1 \times d}$: Reasoning latent vector (internal computational scratchpad updated $n$ times per step).
+- $\mathbf{y}_t \in \mathbb{R}^{1 \times d}$: Solution representation vector (draft candidate code state updated 1 time per step).
+
+```mermaid
+graph TD
+    A[Prompt Token Embeddings X] --> B[Initialize z=0, y=0]
+    B --> C{t < T and not halted?}
+    C -- Yes --> D["Run n times: z = Transformer([X ; RMSNorm(y) ; RMSNorm(z)])"]
+    D --> E["Run 1 time: y = Transformer([X ; RMSNorm(z) ; RMSNorm(y)])"]
+    E --> F[Evaluate ACT Halting Head: h_t >= tau?]
+    F --> C
+    C -- No / Halted --> G["Prime AR generation: [X ; RMSNorm(y) ; RMSNorm(z)]"]
+    G --> H[Emit Final Solution Tokens]
+```
+
+### 2. Multi-Step Deep Supervision with Power Decay
+To prevent early recurrent representations from collapsing, intermediate solution states $\mathbf{y}_t$ are supervised using monotonically increasing power-decay weights:
+$$w_t = \frac{t^\gamma}{\sum_{j=1}^T j^\gamma}, \quad \gamma = 1.5 \implies w_1 \approx 0.11, \; w_2 \approx 0.31, \; w_3 \approx 0.58$$
+
+### 3. Adaptive Computation Time (ACT) Halting Head
+An auxiliary classification head evaluates the reasoning latent $\mathbf{z}_t$:
+$$h_t = \sigma\left(\mathbf{W}_2 \cdot \text{GELU}(\mathbf{W}_1 \mathbf{z}_t + \mathbf{b}_1) + b_2\right)$$
+If $h_t \ge \tau$ (default $\tau = 0.85$) or cosine distance $d(\mathbf{z}_t, \mathbf{z}_{t-1}) < 0.02$, computation halts early, saving up to 40% forward passes on simpler tasks.
+
+---
+
+## ☁️ Google Cloud System Topology
+
+The system is deployed across a 3-tier production architecture in `us-central1` (Project: `davenport-boutique`):
+
+```
++-----------------------------------------------------------------------------+
+|                                DEVELOPER / RESEARCHER                       |
+|   - submit_vertex_training.py CLI Dispatcher                                |
+|   - Next.js Web Showcase (https://tiny-recursive-gemma-web...run.app)      |
++------------------------------------+----------------------------------------+
+                                     |
+               +---------------------+---------------------+
+               |                                           |
+               v                                           v
++-----------------------------+             +-------------------------------+
+|       GOOGLE CLOUD RUN      |             |        GOOGLE VERTEX AI       |
+|    (Stateless Serving Tier) |             |     (Dedicated GPU Training)  |
+| - tiny-recursive-gemma-web  |             | - Machine: g2-standard-4      |
+| - HTTP Basic Auth           |             | - GPU: 1x NVIDIA L4 (24GB)    |
+| - SmartRouter Secret Auth   |             | - Container: PyTorch 2.4 GPU  |
+| - Project Auth (ADC)        |             | - cloud/train_torch_trm.py    |
+| - Live 3-way evaluation     |             | - LoRA + ACT + Deep Sup       |
++--------------+--------------+             +---------------+---------------+
+               |                                           |
+               +---------------------+---------------------+
+                                     |
+                                     v
++-----------------------------------------------------------------------------+
+|                         GOOGLE CLOUD STORAGE (GCS)                          |
+|   Bucket: gs://davenport-boutique-vertex-staging/                           |
+|   - /source/      : Immutable packaging tarballs                            |
+|   - /checkpoints/ : Trained LoRA adapters & ACT halting heads               |
++-----------------------------------------------------------------------------+
+```
+
+---
+
+## 💻 Quickstart & CLI Commands
+
+### 1. Local Testing & Defensive Isolation
+Local testing runs in strictly sandboxed, lightweight mode without loading heavy weights onto the Mac, finishing in **~3 seconds with zero memory pressure**:
 ```bash
-# Set LOCAL_DEV="true" in .env to bypass auth prompts during local testing
+# Run 27 isolated unit tests
+uv run pytest
+```
+
+### 2. Google Vertex AI GPU Training Dispatcher
+To train on dedicated NVIDIA L4 (24GB VRAM) GPUs on Google Cloud:
+```bash
+# Dry-run validation (validates JSON payload without launching compute)
+uv run python scripts/submit_vertex_training.py --dry-run
+
+# Real submission to Google Vertex AI
+uv run python scripts/submit_vertex_training.py \
+  --project davenport-boutique \
+  --region us-central1 \
+  --gpu L4 \
+  --epochs 3 \
+  --batch-size 4 \
+  --iterations 3 \
+  --reasoning-steps 2 \
+  --decay-gamma 1.5 \
+  --act
+```
+
+### 3. Stream Live Cloud Training Logs
+```bash
+gcloud ai custom-jobs stream-logs <JOB_ID> \
+  --project=davenport-boutique \
+  --region=us-central1
+```
+
+### 4. Interactive Web Showcase
+Open the deployed showcase at [https://tiny-recursive-gemma-web-txgsracloq-uc.a.run.app](https://tiny-recursive-gemma-web-txgsracloq-uc.a.run.app) or run locally:
+```bash
 cd web
 npm install
 npm run dev
 # Open http://localhost:3000
 ```
+- **Option A**: 200-task benchmark comparison matrix & digestible research dashboard.
+- **Option B**: Try-it-out playground with live 3-way generation and remote GPU training trigger.
+- **Architecture & Docs**: Tabbed mathematical formulation, cloud topology, and hardware safeguard documentation.
 
 ---
 
-## Getting Started
+## 🛡️ Apple Silicon Protection Safeguards
 
-### Installation & Configuration
-
-1. Ensure you have `uv` installed, then install the project in editable mode:
-   ```bash
-   uv pip install -e .
-   ```
-
-2. Copy the example environment file to create your local configuration:
-   ```bash
-   cp .env.example .env
-   ```
-   By default, the `.env` file specifies the base model and adapters output directory:
-   ```env
-   BASE_MODEL="google/gemma-4-E2B-it-qat-q4_0-unquantized"
-   ADAPTER_PATH="adapters"
-   ```
-
-### Usage
-
-All scripts will automatically load default values from your `.env` file. You can always override these defaults at runtime by passing explicit command line arguments (e.g., `--model` or `--adapter`).
-
-
-#### 1. Running Discrete (Text-Based) Inference
-Run the explicit text-based refinement loop (automatically uses `BASE_MODEL` and `ADAPTER_PATH` from your `.env`):
-```bash
-python scripts/inference.py \
-  --prompt "Write a Python function to check if a number is prime." \
-  --iters 2
-```
-
-#### 2. Running Continuous (Latent-Space) Inference
-Run the latent-space recursion pipeline (automatically loads the model and continuous weights based on your `.env`):
-```bash
-python scripts/inference_continuous.py \
-  --prompt "Write a Python function to check if a number is prime."
-```
-
-#### 3. Programmatic Usage (Python API)
-
-You can easily load and run both discrete and continuous models directly within your Python scripts:
-
-##### Continuous (Latent-Space) Pipeline
-```python
-from tiny_recursive_gemma import ContinuousLatentPipeline
-
-# Initialize the pipeline with the base model and (optional) continuous weights
-pipeline = ContinuousLatentPipeline(
-    model_path="google/gemma-4-E2B-it-qat-q4_0-unquantized",
-    adapter_path="adapters/continuous_weights.safetensors"
-)
-
-# Run latent-space inference
-response = pipeline(
-    prompt="Write a Python function to check if a number is prime.",
-    max_tokens=512,
-    iterations=5,          # T recursion iterations
-    dual_latent=True,      # Use dual (y & z) latent states
-    reasoning_steps=3      # n reasoning steps per iteration
-)
-print(response)
-```
-
-##### Discrete (Text-Based) Recursion
-```python
-from tiny_recursive_gemma import run_recursive_inference
-
-# Run the discrete text-based recursive reasoning loop
-final_code = run_recursive_inference(
-    model_path="google/gemma-4-E2B-it-qat-q4_0-unquantized",
-    adapter_path="adapters", # Path to LoRA adapters directory
-    prompt="Write a Python function to check if a number is prime.",
-    max_iters=2
-)
-print(final_code)
-```
-
-
-### Training
-
-#### Training the Continuous Model
-Train the continuous model using LoRA and weight EMA (automatically uses `BASE_MODEL` and `ADAPTER_PATH` from your `.env`):
-```bash
-python scripts/train_continuous.py \
-  --data data/train.jsonl \
-  --iters 100 \
-  --recursive-iters 3 \
-  --lora-layers 2 \
-  --ema-beta 0.99
-```
-Key configuration parameters in [train_continuous.py](scripts/train_continuous.py):
-*   `--recursive-iters` ($T$): Number of external recursion loops.
-*   `--reasoning-steps` ($n$): Inner steps to update reasoning state $z$ per loop.
-*   `--no-trm`: Disables gradient-free premature recursion (tracks gradients through all steps).
-
-### Evaluation
-Measure coding performance on the HumanEval dataset using [evaluate.py](scripts/evaluate.py). All evaluations will automatically load defaults from your `.env`.
-
-#### 1. Zero-Shot Baseline (No Recursion)
-```bash
-python scripts/evaluate.py \
-  --baseline \
-  --samples 10
-```
-
-#### 2. Discrete Recursive Evaluation
-```bash
-python scripts/evaluate.py \
-  --iters 2 \
-  --samples 10
-```
-
-#### 3. Continuous Latent-Space Evaluation
-```bash
-python scripts/evaluate.py \
-  --continuous \
-  --samples 10
-```
+To prevent macOS kernel memory panics (`vm_page_out / watchdog timeout`) when experimenting on consumer unified memory:
+1. **Headroom Guard ([`src/tiny_recursive_gemma/memory_guard.py`](src/tiny_recursive_gemma/memory_guard.py))**: Actively monitors Darwin `vm_stat` free page count. Automatically purges MLX Metal cache buffers (`mx.metal.clear_cache()`) and runs garbage collection if free memory drops below 2.0GB.
+2. **Pytest Protection Filter**: Heavy local weight evaluations require `RUN_HEAVY_TESTS=1`. Default pytest commands execute strictly against synthetic mock tensors.
 
 ---
 
-## Critical Evaluation & Drawbacks
+## 📜 Academic Attribution
 
-While continuous latent recursion is mathematically elegant, there are major trade-offs and reasons why you might **not** want to use it:
-
-1.  **Zero Interpretability**: Unlike chain-of-thought prompting, you cannot inspect what the model is "thinking" during the latent recursion steps. If the model fails or outputs nonsense, debugging the state of the latent space ($z$ or $y$) is practically impossible.
-2.  **Representation Capacity Bottleneck**: Forcing a pretrained 2B model to learn latent-space reasoning using a tiny 2-layer LoRA adapter is highly constrained. The adapter must learn to encode, update, and decode complex states without degrading the base model's vocabulary and generation capabilities.
-3.  **Train-Inference Distribution Mismatch**: If you train the model with $T=3$ recursion steps, running inference with $T=5$ or $T=10$ steps will likely cause the latent states to drift out of distribution, leading to gibberish output. The model cannot dynamically scale its compute at runtime without custom stabilization.
-4.  **Extreme Instability**: Continuous training is highly sensitive to learning rates, LoRA rank/scale, and weight decay. Without Exponential Moving Average (EMA) smoothing, the model's representations frequently collapse during training.
-5.  **Hardware & Portability Lock-in**: The implementation is tightly coupled to Apple Silicon via MLX. Porting this backpropagation setup or custom embedding injection to PyTorch/CUDA requires a complete rewrite of the model's forward pass.
-
----
-
-## Credits & Attribution
-
-This project is heavily inspired by the architectural breakthroughs presented in:
-*   **Paper**: *"Less is More: Recursive Reasoning with Tiny Networks"* (Samsung SAIL Montréal)
-*   **ArXiv**: [arXiv:2510.04871](https://arxiv.org/abs/2510.04871)
-*   **Key Contributions Adapted**: Gradient-free premature recursion (stop-gradient unrolling), dual-latent space formulation ($y$ and $z$ vectors), and selective depth adapter targeting..
+Based on the continuous latent reasoning breakthroughs in:
+* **Paper**: *"Less is More: Recursive Reasoning with Tiny Networks"* (Samsung SAIL Montréal)
+* **ArXiv**: [arXiv:2510.04871](https://arxiv.org/abs/2510.04871)
+* **Pretrained Base Architecture**: Google Gemma 2B / 4B

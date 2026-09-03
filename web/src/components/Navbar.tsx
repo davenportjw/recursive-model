@@ -66,7 +66,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
               }`}
             >
               <BookOpen className="h-4 w-4" />
-              <span className="hidden md:inline">Deep Dive: Architecture</span>
+              <span>Architecture &amp; Docs</span>
             </button>
           </nav>
 
