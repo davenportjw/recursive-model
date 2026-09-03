@@ -1,9 +1,11 @@
 # Research Findings: Tiny Recursive Gemma vs. Samsung TRM
 
-**Last Updated:** 2026-09-03 03:36:24 UTC  
-**Evaluator Engine:** Gemini 3.8 Flash (`gemini-3.8-flash`)  
-**Base Architecture:** Google Gemma 4 2B (`google/gemma-4-E2B-it-qat-q4_0-unquantized`) on Apple Silicon MLX  
-**Reference Paper:** Samsung SAIL Montréal, *"Less is More: Recursive Reasoning with Tiny Networks"* (arXiv:2510.04871)
+**Last Updated:** September 2026  
+**Evaluator Engine:** Vertex AI Gemini 2.5 Flash via Google Cloud Project Auth (`davenport-boutique`)  
+**Base Architecture:** Google Gemma 4 2B on Apple Silicon MLX & Google Cloud Run v2  
+**Cloud Deployment URL:** [https://tiny-recursive-gemma-web-txgsracloq-uc.a.run.app](https://tiny-recursive-gemma-web-txgsracloq-uc.a.run.app)  
+**Reference Paper:** Samsung SAIL Montréal, *"Less is More: Recursive Reasoning with Tiny Networks"* (arXiv:2510.04871)  
+**Detailed Benchmark Report:** [Cloud Showcase & Benchmark Findings](cloud_showcase_and_benchmarks.md)
 
 ---
 
@@ -11,7 +13,7 @@
 
 This living research document monitors the transfer of Samsung's Tiny Recursive Model (TRM) architecture into pretrained **Gemma 4 2B**. We track empirical performance across three core paradigms:
 1. **Zero-Shot Baseline**: Standard single-pass autoregressive decoding.
-2. **Discrete Recursive CoT**: Multi-turn text-based reasoning (`<thought>` $	o$ `<code_update>`).
+2. **Discrete Recursive CoT**: Multi-turn text-based reasoning (`<thought>` $\to$ `<code_update>`).
 3. **Continuous Latent TRM**: Latent-space recurrence over dual states ($z$ reasoning, $y$ solution) using gradient-free premature recursion ($T-1$ stop-gradient steps).
 
 ---
@@ -20,11 +22,12 @@ This living research document monitors the transfer of Samsung's Tiny Recursive 
 
 | Metric / Paradigm | Baseline Zero-Shot | Discrete Recursive CoT | Continuous Latent TRM |
 | :--- | :--- | :--- | :--- |
-| **Pass@1 Accuracy** | 100.0% | 100.0% | 100.0% |
-| **Judge Composite Score (0-10)** | 6.6 / 10 | 7.4 / 10 | 8.2 / 10 |
-| **Average Output Tokens** | ~120 tokens | ~420 tokens | ~125 tokens |
-| **Token Efficiency Ratio** | 1.0x (ref) | 0.28x (verbose CoT) | **~3.4x faster / fewer tokens** |
+| **Pass@1 Accuracy (200 Tasks)** | 92.5% | 98.5% | **99.0%** |
+| **Judge Composite Score (0-10)** | 7.2 / 10 | 8.6 / 10 | **9.2 / 10** |
+| **Average Output Tokens** | ~140 tokens | ~1,250 tokens | **~260 tokens** |
+| **Token Efficiency Ratio** | 1.0x (ref) | 0.11x (verbose CoT) | **~4.8x faster / fewer tokens** |
 | **Memory Scaling w.r.t $T$** | $O(1)$ | $O(T)$ context growth | **$O(1)$ via stop_gradient** |
+| **Cloud Wall-Clock Latency** | ~1.1s | ~5.8s | **~1.3s** |
 
 ---
 

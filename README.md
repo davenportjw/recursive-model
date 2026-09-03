@@ -56,6 +56,40 @@ Google's experimental [DiffusionGemma](https://developers.googleblog.com/diffusi
 
 ---
 
+## Interactive Web Showcase & Cloud Deployment
+
+This repository includes a full-stack **Next.js 15+** application (`web/`) to interactively explore empirical research findings, benchmark runs, and live 3-way generation across paradigms.
+
+### Live Cloud Run Service
+- **Live URL**: [https://tiny-recursive-gemma-web-txgsracloq-uc.a.run.app](https://tiny-recursive-gemma-web-txgsracloq-uc.a.run.app)
+- **Hosted On**: Google Cloud Run v2 in `us-central1` (Project: `davenport-boutique`)
+- **Authentication**: HTTP Basic Auth (`admin` / `changeme-in-production`) & SmartRouter shared secret (`X-Shared-Secret`)
+- **Evaluator**: Google Cloud Project Auth / Vertex AI (`gemini-2.5-flash` via Application Default Credentials)
+- **Comprehensive Report**: See [docs/cloud_showcase_and_benchmarks.md](docs/cloud_showcase_and_benchmarks.md)
+
+### Features
+1. **Option A: Benchmark Explorer & Digestible Findings**:
+   - 200 tasks from `eval/complex_tasks_200.jsonl` categorized across 4 difficulty tiers.
+   - Side-by-side code inspection: Baseline vs. Discrete Recursive CoT (with collapsible `<thought>` / `<code_update>` scratchpads) vs. Continuous Latent TRM.
+   - Digestible research dashboard: Samsung TRM hypotheses, empirical comparison matrix, convergence trajectory ($d(z_t, z_{t-1}) \to 0$), and failure mode taxonomy.
+2. **Option B: Live "Try It Out" Playground**:
+   - Custom prompt editor with instant presets (*Prime Factorization*, *LRU Cache*, *Longest Palindrome*).
+   - Sliders for recursion depth $T$ (1–8), reasoning steps $n$ (1–4), and ACT threshold $\tau$ (0.50–0.95).
+   - Live 3-way inference orchestrator (`/api/infer`), unit test runner (`/api/execute`), and Vertex AI rubric judge (`/api/judge`).
+3. **Architecture Deep Dive**:
+   - Structural comparison of Continuous Latent TRM vs. Google DiffusionGemma.
+
+### Running the Web Showcase Locally
+```bash
+# Set LOCAL_DEV="true" in .env to bypass auth prompts during local testing
+cd web
+npm install
+npm run dev
+# Open http://localhost:3000
+```
+
+---
+
 ## Getting Started
 
 ### Installation & Configuration
