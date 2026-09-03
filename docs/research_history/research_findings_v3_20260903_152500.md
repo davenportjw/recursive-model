@@ -1,27 +1,34 @@
-# Research Findings: Tiny Recursive Gemma vs. Samsung TRM
+# Research Findings: Tiny Recursive Gemma vs. Samsung TRM (Iteration 3)
 
-**Current Iteration:** Iteration 3 (September 2026)  
-**Evaluator Engine:** Google Vertex AI Gemini 2.5 Flash via Google Cloud Project Auth (`davenport-boutique`, `us-central1`)  
+**Iteration Timestamp:** September 3, 2026 (Phase 2 Closeout & Cloud Migration)  
+**Evaluator Engine:** Google Vertex AI Gemini 2.5 Flash (`davenport-boutique`, `us-central1`)  
 **Base Architecture:** Google Gemma 4 2B (MLX on Apple Silicon + PyTorch on Google Cloud Vertex AI)  
 **Live Showcase URL:** [https://tiny-recursive-gemma-web-txgsracloq-uc.a.run.app](https://tiny-recursive-gemma-web-txgsracloq-uc.a.run.app)  
 **Reference Paper:** Samsung SAIL Montréal, *"Less is More: Recursive Reasoning with Tiny Networks"* (arXiv:2510.04871)  
-**Architecture Guide:** [docs/researcher_architecture_guide.md](researcher_architecture_guide.md)  
-**Historical Iterations:** [docs/research_history/](research_history/)
+**Architecture Guide:** [docs/researcher_architecture_guide.md](../researcher_architecture_guide.md)
 
 ---
 
-## 1. Executive Research Summary
+## 1. Executive Research Summary (Iteration 3)
 
-This living research document monitors the transfer of Samsung's Tiny Recursive Model (TRM) continuous latent reasoning architecture into pretrained **Google Gemma 4 2B**. We track empirical performance across three core paradigms:
-1. **Zero-Shot Baseline**: Standard single-pass autoregressive decoding without reasoning context.
-2. **Discrete Recursive CoT**: Multi-turn text-based reasoning (`<thought>` $\to$ `<code_update>`).
-3. **Continuous Latent TRM**: Latent-space recurrence over dual states ($z$ reasoning scratchpad, $y$ candidate solution) using gradient-free premature recursion ($T-1$ stop-gradient unrolls).
+This iteration records the completion of Phase 2 objectives:
+1. **Benchmark Scaling**: Expanded evaluation suite from 3 toy tasks to **200 standardized programming tasks** (164 HumanEval + 33 MBPP + 3 Complex Algorithmic Tasks) across 4 difficulty tiers.
+2. **Algorithmic Enhancements**:
+   - Implemented **Dual-Latent Recurrence** ($z$ reasoning scratchpad updated $n=2$ times, $y$ solution updated $1$ time per step).
+   - Integrated **Pre-Layer RMSNorm** to eliminate hidden-state norm divergence.
+   - Designed and integrated **Adaptive Computation Time (ACT) Halting Head** with binary cross-entropy loss.
+   - Formulated **Decaying Multi-Step Deep Supervision** with power weights ($w_t = t^\gamma / \sum j^\gamma, \gamma=1.5$).
+3. **Consumer Hardware Limits & Guardrails**:
+   - Diagnosed macOS kernel watchdog memory panics on 16GB Apple Silicon caused by autoregressive unrolling of 2B models into non-pageable wired memory.
+   - Built Darwin `vm_stat` memory guardrails (`memory_guard.py`), test suite isolation (`RUN_HEAVY_TESTS=1`), and lightweight mock verifications (3.0s runtime).
+4. **Google Cloud GPU Migration**:
+   - Created standalone PyTorch training pipeline (`cloud/train_torch_trm.py`) with LoRA ($r=8, \alpha=16$), ACT, and automated GCS checkpointing.
+   - Developed automated Vertex AI Custom Training CLI dispatcher (`scripts/submit_vertex_training.py`) targeting dedicated NVIDIA L4 (24GB VRAM) GPUs on `g2-standard-4`.
+   - Connected Next.js web application to Cloud Run v2 with live job telemetry and remote inference via Vertex AI Application Default Credentials.
 
 ---
 
 ## 2. Empirical Benchmark Matrix (200-Task Standard Suite)
-
-Evaluated across the 200-task standardized suite (164 HumanEval + 33 MBPP + 3 Complex Algorithmic Tasks):
 
 | Metric / Dimension | Zero-Shot Baseline | Discrete Recursive CoT | Continuous Latent TRM (Ours) | Advantage / Delta |
 | :--- | :--- | :--- | :--- | :--- |
@@ -33,15 +40,15 @@ Evaluated across the 200-task standardized suite (164 HumanEval + 33 MBPP + 3 Co
 
 ---
 
-## 3. Samsung TRM Hypothesis Validation
+## 3. Core Hypotheses Status Audit
 
 ### Hypothesis 1: Latent Recurrence Eliminates Inference Bloat
 - **Status:** **VALIDATED (High Confidence)**
-- **Observation:** Continuous TRM generates direct code solutions without generating hundreds of intermediate natural language thought tokens. On complex multi-step problems, token generation overhead drops by **~3.4x**, moving compute from memory-bandwidth-bound token decoding into parallel matrix multiplications.
+- **Observation:** Continuous TRM generates direct code solutions without emitting verbose natural language thoughts. On multi-step coding problems, token generation overhead drops by **~3.4x** (from ~420 tokens down to ~125 tokens), moving compute from memory-bandwidth-bound decoding to matrix operations.
 
 ### Hypothesis 2: Dual-Latent ($y, z$) Separation Prevents Representation Collapse
 - **Status:** **VALIDATED (High Confidence)**
-- **Observation:** Maintaining a separate reasoning state $z$ updated $n=2$ times per step and solution state $y$ updated once prevents the model from conflating scratchpad computation with syntax prediction.
+- **Observation:** Maintaining a separate reasoning state $z$ updated $n$ times per step and solution state $y$ updated once prevents the model from conflating internal planning with token syntax.
 
 ### Hypothesis 3: Gradient-Free Premature Recursion Enables Constant Memory
 - **Status:** **VALIDATED (High Confidence)**
@@ -49,25 +56,13 @@ Evaluated across the 200-task standardized suite (164 HumanEval + 33 MBPP + 3 Co
 
 ### Hypothesis 4: Pretraining Representation Shift Tax
 - **Status:** **CONFIRMED CHALLENGE & MITIGATED**
-- **Observation:** Pretrained LLMs (Gemma 2B) suffer vocabulary manifold drift when raw latents are injected without constraints. Solved by combining pre-layer RMSNorm, targeted LoRA layering on attention projections, and multi-step deep supervision with power decay weights ($w_t = t^\gamma / \sum j^\gamma$).
+- **Observation:** Pretrained LLMs (Gemma 2B) suffer vocabulary manifold drift when raw latents are injected without constraints. Solved by combining pre-layer RMSNorm, targeted LoRA layering on attention projections, and multi-step deep supervision.
 
 ---
 
-## 4. Failure Mode Taxonomy & Mitigations
+## 4. Next Phase Researcher Recommendations (Phase 3 Roadmap)
 
-1. **Premature Convergence / Stagnation**:
-   - *Symptom:* Latent states $z$ and $y$ reach fixed points too early, failing to repair subtle algorithmic edge cases.
-   - *Mitigation:* Increase reasoning sub-steps $n$ from 2 to 4 and apply EMA smoothing ($\beta=0.99$) to stabilize weights.
-2. **Vocabulary Manifold Drift**:
-   - *Symptom:* Continuous latent model outputs truncated or syntactically malformed code.
-   - *Mitigation:* Enforce pre-layer RMSNorm and multi-step deep supervision with power decay ($\gamma=1.5$).
-3. **Consumer Hardware Memory Panics**:
-   - *Symptom:* Kernel memory watchdog panics on Apple Silicon during unrolled autoregressive loops.
-   - *Mitigation:* Offload training to Google Cloud Vertex AI (NVIDIA L4 24GB GPUs) and enforce Darwin `vm_stat` memory guardrails locally.
-
----
-
-## 5. Next Phase Researcher Recommendations (Phase 3 Roadmap)
+The researcher identifies three prioritized tactical actions for the next cycle:
 
 ```mermaid
 graph TD
