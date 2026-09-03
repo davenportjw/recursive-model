@@ -1,0 +1,14 @@
+.git
+.github
+node_modules
+web/node_modules
+web/.next
+.venv
+venv
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.terraform
+*.tfstate*
+.DS_Store

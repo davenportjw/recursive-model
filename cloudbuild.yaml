@@ -4,7 +4,7 @@ steps:
     args:
       - 'build'
       - '-t'
-      - '$_LOCATION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA'
+      - '$_LOCATION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME/$_SERVICE_NAME:$BUILD_ID'
       - '-t'
       - '$_LOCATION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME/$_SERVICE_NAME:latest'
       - '.'
@@ -13,14 +13,14 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
-      - '$_LOCATION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA'
+      - '$_LOCATION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME/$_SERVICE_NAME:$BUILD_ID'
 
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
       - '$_LOCATION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME/$_SERVICE_NAME:latest'
 
-  # 3. Deploy container image to Google Cloud Run
+  # 3. Deploy container image to Google Cloud Run with Google Cloud Project Auth (Vertex AI)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -28,7 +28,7 @@ steps:
       - 'deploy'
       - '$_SERVICE_NAME'
       - '--image'
-      - '$_LOCATION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA'
+      - '$_LOCATION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME/$_SERVICE_NAME:$BUILD_ID'
       - '--region'
       - '$_LOCATION'
       - '--platform'
@@ -40,16 +40,18 @@ steps:
       - '2'
       - '--memory'
       - '2Gi'
-      - '--set-secrets'
-      - 'GEMINI_API_KEY=GEMINI_API_KEY:latest,BASIC_AUTH_PASSWORD=BASIC_AUTH_PASSWORD:latest'
+      - '--set-env-vars'
+      - 'GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_CLOUD_REGION=$_LOCATION,LOCAL_DEV=false,BASIC_AUTH_USER=$_BASIC_AUTH_USER,BASIC_AUTH_PASSWORD=$_BASIC_AUTH_PASSWORD'
 
 substitutions:
   _LOCATION: 'us-central1'
   _REPO_NAME: 'tiny-recursive-gemma'
   _SERVICE_NAME: 'tiny-recursive-gemma-web'
+  _BASIC_AUTH_USER: 'admin'
+  _BASIC_AUTH_PASSWORD: 'changeme-in-production'
 
 images:
-  - '$_LOCATION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA'
+  - '$_LOCATION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME/$_SERVICE_NAME:$BUILD_ID'
   - '$_LOCATION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME/$_SERVICE_NAME:latest'
 
 options:
