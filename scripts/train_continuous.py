@@ -12,7 +12,11 @@ if __name__ == "__main__":
         default=os.getenv("BASE_MODEL", "google/gemma-4-E2B-it-qat-q4_0-unquantized"), 
         help="Base model path"
     )
-    parser.add_argument("--data", default="data/train.jsonl", help="Path to JSONL training data")
+    parser.add_argument(
+        "--data", 
+        default="data/continuous_train.jsonl" if os.path.exists("data/continuous_train.jsonl") else "data/train.jsonl", 
+        help="Path to JSONL training data"
+    )
     parser.add_argument("--iters", type=int, default=5, help="Number of training steps/samples to optimize")
     parser.add_argument(
         "--output", 

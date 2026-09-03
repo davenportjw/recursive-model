@@ -9,19 +9,23 @@ import mlx.core as mx
 from mlx_lm import load, generate
 from datasets import load_dataset
 from dotenv import load_dotenv
-from tiny_recursive_gemma import run_recursive_inference, generate_continuous
+from datetime import datetime
+from tiny_recursive_gemma import run_recursive_inference, generate_continuous, ContinuousLatentPipeline
+from tiny_recursive_gemma.inference import extract_thought_and_code
 
 def run_test(generated_code: str, test_code: str, entry_point: str) -> bool:
     """
-    Executes the generated code combined with the HumanEval test suite.
+    Executes the generated code combined with the test suite.
     Uses 'uv run python' to execute the test file in the isolated environment.
     """
-    # Clean up markdown if present
-    code = generated_code
-    if "```python" in code:
-        blocks = re.findall(r'```python\n(.*?)\n```', code, re.DOTALL)
-        if blocks:
-            code = blocks[-1]
+    # Clean up code using the robust extraction hierarchy
+    _, code = extract_thought_and_code(generated_code)
+    if not code:
+        code = generated_code
+        
+    # Additional cleanup for any trailing markdown backticks
+    code = re.sub(r'^```(?:python)?\s*\n?', '', code.strip())
+    code = re.sub(r'\n?```$', '', code.strip())
     
     # Combine code, test suite, and the check() call
     full_code = f"{code}\n\n{test_code}\n\ncheck({entry_point})\n"
@@ -33,12 +37,24 @@ def run_test(generated_code: str, test_code: str, entry_point: str) -> bool:
         
     try:
         # Run using 'uv run python' with a timeout to prevent infinite loops
-        result = subprocess.run(
-            ["uv", "run", "python", temp_file_path],
-            capture_output=True,
-            text=True,
-            timeout=10 # 10 second timeout per test
-        )
+        # Fallback to sys.executable if uv is not in PATH
+        cmd = ["uv", "run", "python", temp_file_path]
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=10 # 10 second timeout per test
+            )
+        except FileNotFoundError:
+            import sys
+            result = subprocess.run(
+                [sys.executable, temp_file_path],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            
         passed = (result.returncode == 0)
     except subprocess.TimeoutExpired:
         passed = False
@@ -92,18 +108,14 @@ def evaluate_recursive(model_path, adapter_path, iters, samples):
             
     return passed, total
 
-
-
-def evaluate_continuous(model, tokenizer, samples, dual_latent=True, reasoning_steps=3):
+def evaluate_continuous(pipeline: ContinuousLatentPipeline, samples, dual_latent=True, reasoning_steps=3):
     """Evaluates the continuous latent model."""
     passed = 0
     total = len(samples)
     
     for item in tqdm(samples, desc="Evaluating Continuous"):
         prompt = item['prompt']
-        generated_code = generate_continuous(
-            model, 
-            tokenizer, 
+        generated_code = pipeline(
             prompt, 
             dual_latent=dual_latent, 
             reasoning_steps=reasoning_steps
@@ -113,6 +125,22 @@ def evaluate_continuous(model, tokenizer, samples, dual_latent=True, reasoning_s
             passed += 1
             
     return passed, total
+
+def load_eval_dataset(dataset_name: str, max_samples: int):
+    """Loads either OpenAI HumanEval or local complex tasks benchmark."""
+    if dataset_name.lower() == "complex":
+        path = "eval/complex_tasks.jsonl"
+        print(f"Loading local complex tasks benchmark from {path}...")
+        samples = []
+        with open(path, "r") as f:
+            for line in f:
+                if line.strip():
+                    samples.append(json.loads(line))
+        return samples[:max_samples]
+    else:
+        print("Loading HumanEval dataset...")
+        ds = load_dataset("openai/openai_humaneval", split="test")
+        return list(ds)[:max_samples]
 
 if __name__ == "__main__":
     load_dotenv()
@@ -127,10 +155,12 @@ if __name__ == "__main__":
         default=os.getenv("ADAPTER_PATH", "adapters"), 
         help="Path to LoRA adapters (if testing recursive)"
     )
+    parser.add_argument("--dataset", choices=["humaneval", "complex"], default="humaneval", help="Benchmark dataset to run")
     parser.add_argument("--iters", type=int, default=2, help="Number of recursive improvements")
-    parser.add_argument("--samples", type=int, default=10, help="Number of HumanEval samples to evaluate")
+    parser.add_argument("--samples", type=int, default=10, help="Number of samples to evaluate")
     parser.add_argument("--baseline", action="store_true", help="Run baseline evaluation instead of recursive")
     parser.add_argument("--continuous", action="store_true", help="Run continuous latent model evaluation")
+    parser.add_argument("--output-report", default="eval/results.json", help="Path to write evaluation report")
     
     parser.add_argument("--no-dual-latent", dest="dual_latent", action="store_false", help="Disable Dual-Latent (y and z) reasoning")
     parser.add_argument("--reasoning-steps", type=int, default=3, help="Number of reasoning steps (n) per iteration in Dual-Latent mode")
@@ -138,37 +168,51 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
     
-    print("Loading dataset...")
-    ds = load_dataset("openai/openai_humaneval", split="test")
-    samples = list(ds)[:args.samples]
+    samples = load_eval_dataset(args.dataset, args.samples)
+    total_samples = len(samples)
     
     if args.baseline:
-        print(f"Starting Baseline Zero-Shot Evaluation for {args.samples} samples...")
+        print(f"Starting Baseline Zero-Shot Evaluation on {args.dataset} ({total_samples} samples)...")
         model, tokenizer = load(args.model)
         passed, total = evaluate_baseline(model, tokenizer, samples)
+        eval_mode = "baseline"
     elif args.continuous:
-        print(f"Starting Continuous Latent Evaluation for {args.samples} samples...")
-        model, tokenizer = load(args.model)
-        if args.adapter:
-            adapter_path = args.adapter
-            if os.path.isdir(adapter_path):
-                adapter_path = os.path.join(adapter_path, "continuous_weights.safetensors")
-            print(f"Loading continuous weights from {adapter_path}...")
-            model.load_weights(adapter_path, strict=False)
+        print(f"Starting Continuous Latent Evaluation on {args.dataset} ({total_samples} samples)...")
+        pipeline = ContinuousLatentPipeline(args.model, adapter_path=args.adapter)
         passed, total = evaluate_continuous(
-            model, 
-            tokenizer, 
+            pipeline, 
             samples, 
             dual_latent=args.dual_latent, 
             reasoning_steps=args.reasoning_steps
         )
+        eval_mode = "continuous"
     else:
-        print(f"Starting Recursive Evaluation for {args.samples} samples with {args.iters} iterations...")
+        print(f"Starting Recursive Evaluation on {args.dataset} ({total_samples} samples) with {args.iters} iterations...")
         passed, total = evaluate_recursive(args.model, args.adapter, args.iters, samples)
+        eval_mode = "recursive"
         
+    pass_at_1 = (passed / total) * 100 if total > 0 else 0.0
     print("\n" + "="*30)
-    print(f"Evaluation Results:")
+    print(f"Evaluation Results ({eval_mode} on {args.dataset}):")
     print(f"Total Samples: {total}")
     print(f"Passed: {passed}")
-    print(f"Pass@1: {(passed/total)*100:.2f}%")
+    print(f"Pass@1: {pass_at_1:.2f}%")
     print("="*30 + "\n")
+    
+    # Save structured results
+    report = {
+        "timestamp": datetime.utcnow().isoformat(),
+        "mode": eval_mode,
+        "dataset": args.dataset,
+        "model": args.model,
+        "total": total,
+        "passed": passed,
+        "pass_at_1": pass_at_1,
+        "dual_latent": args.dual_latent if args.continuous else None,
+        "reasoning_steps": args.reasoning_steps if args.continuous else None,
+        "iters": args.iters if eval_mode == "recursive" else None
+    }
+    os.makedirs(os.path.dirname(args.output_report), exist_ok=True)
+    with open(args.output_report, "w") as f:
+        json.dump(report, f, indent=4)
+    print(f"Saved evaluation report to {args.output_report}")

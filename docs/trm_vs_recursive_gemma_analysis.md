@@ -1,6 +1,6 @@
 # Comparative Analysis: Samsung's Tiny Recursive Models (TRM) vs. Tiny Recursive Gemma
 
-This report analyzes the methodology proposed in Samsung SAIL Montréal's paper **"Less is More: Recursive Reasoning with Tiny Networks" (arXiv:2510.04871)** and compares it against the current implementation in the [tiny-recursive-gemma](file:///Users/jasondavenport/GitHub/tiny-recursive-gemma/README.md) codebase. We also evaluate the feasibility and provide a concrete implementation roadmap for applying the paper's core techniques to pretrained **Gemma** models on Apple Silicon using MLX.
+This report analyzes the methodology proposed in Samsung SAIL Montréal's paper **"Less is More: Recursive Reasoning with Tiny Networks" (arXiv:2510.04871)** and compares it against the current implementation in the [tiny-recursive-gemma](../README.md) codebase. We also evaluate the feasibility and provide a concrete implementation roadmap for applying the paper's core techniques to pretrained **Gemma** models on Apple Silicon using MLX.
 
 ---
 
@@ -39,7 +39,7 @@ In previous hierarchical models (like HRM), researchers relied on the **Implicit
 
 **TRM's Solution:** Run $T-1$ recursion steps under `torch.no_grad()`, then run the final $T$-th step with gradients enabled. Gradients only flow through the last step ($n+1$ forward passes), which is mathematically exact and extremely memory-efficient.
 
-**Feasibility for Gemma:** Highly Feasible. In the current MLX implementation, the [loss_fn](file:///Users/jasondavenport/GitHub/tiny-recursive-gemma/src/tiny_recursive_gemma/training.py#L21) in [training.py](file:///Users/jasondavenport/GitHub/tiny-recursive-gemma/src/tiny_recursive_gemma/training.py) unrolls the entire loop with gradients enabled. For $T=3$, this triples the memory consumption and limits scaling. Implementing the TRM gradient-free prefix will allow scaling to $T \ge 10$ iterations on consumer-grade Macs.
+**Feasibility for Gemma:** Highly Feasible. In the current MLX implementation, the [`loss_fn`](../src/tiny_recursive_gemma/training.py) in [`training.py`](../src/tiny_recursive_gemma/training.py) unrolls the entire loop with gradients enabled. For $T=3$, this triples the memory consumption and limits scaling. Implementing the TRM gradient-free prefix will allow scaling to $T \ge 10$ iterations on consumer-grade Macs.
 
 ### B. The Dual-Latent Hypothesis ($y$ vs. $z$)
 TRM shows that a single latent feature is suboptimal. Having two distinct features is highly beneficial:
@@ -57,7 +57,7 @@ Without $z$, the model forgets its reasoning path. Without $y$, the model is for
 To bring the `tiny-recursive-gemma` codebase into alignment with the breakthrough findings of the Samsung paper, we propose the following three-stage roadmap.
 
 ### Stage 1: Memory Optimization (Gradient-Free Unrolling)
-Modify the loss function in [training.py](file:///Users/jasondavenport/GitHub/tiny-recursive-gemma/src/tiny_recursive_gemma/training.py) to prevent gradient tracking on the first $T-1$ steps. This allows scaling to many more recursion steps without Out-Of-Memory errors on Mac.
+Modify the loss function in [`training.py`](../src/tiny_recursive_gemma/training.py) to prevent gradient tracking on the first $T-1$ steps. This allows scaling to many more recursion steps without Out-Of-Memory errors on Mac.
 
 ### Stage 2: Dual-Latent Architecture ($y$ and $z$)
 Incorporate separate reasoning and solution tokens.

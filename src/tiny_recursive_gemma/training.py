@@ -10,24 +10,48 @@ from .continuous_model import get_transformer_layers, get_logits
 
 
 def load_data(file_path):
+    """Loads dataset from JSONL, supporting both messages format and prompt/solution format.
+    Automatically extracts clean solution code for continuous latent training.
+    """
+    import re
     dataset = []
     with open(file_path, 'r') as f:
         for line in f:
+            if not line.strip():
+                continue
             obj = json.loads(line)
             if 'messages' in obj:
                 user_part = obj['messages'][0]['content']
                 code_part = obj['messages'][1]['content']
+                
+                # If training continuous model, strip XML thought tags if present
+                code_match = re.search(r'<code_update>(.*?)</code_update>', code_part, re.DOTALL)
+                if code_match:
+                    code_part = code_match.group(1).strip()
+                    
                 dataset.append((user_part, code_part))
+            elif 'prompt' in obj and ('solution' in obj or 'code' in obj):
+                prompt = obj['prompt']
+                solution = obj.get('solution', obj.get('code', ''))
+                dataset.append((prompt, solution))
     return dataset
 
 def loss_fn(model, transformer, lm, prompt_tokens, target_tokens, iterations=3, trm_mode=True, dual_latent=True, reasoning_steps=3):
+    if len(target_tokens) == 0:
+        return mx.array(0.0)
+        
     prompt_ids = mx.array(prompt_tokens)[None]
     prompt_embeds = transformer.embed_tokens(prompt_ids)
     
-    target_ids_input = mx.array(target_tokens[:-1])[None]
-    target_embeds_input = transformer.embed_tokens(target_ids_input)
+    # Autoregressive target inputs and labels
+    if len(target_tokens) > 1:
+        target_ids_input = mx.array(target_tokens[:-1])[None]
+        target_embeds_input = transformer.embed_tokens(target_ids_input)
+    else:
+        # Edge case: single token target
+        target_embeds_input = mx.zeros((1, 0, prompt_embeds.shape[-1]))
+        
     target_labels = mx.array(target_tokens)[None]
-    
     hidden_dim = prompt_embeds.shape[-1]
     
     if trm_mode:
@@ -61,10 +85,15 @@ def loss_fn(model, transformer, lm, prompt_tokens, target_tokens, iterations=3, 
             y_next = hidden[:, -1:, :]
             
             # 3. Compute target prediction loss (Deep Supervision at the final step)
-            full_embeds = mx.concatenate([prompt_embeds, z, y_next, target_embeds_input], axis=1)
+            if target_embeds_input.shape[1] > 0:
+                full_embeds = mx.concatenate([prompt_embeds, z, y_next, target_embeds_input], axis=1)
+            else:
+                full_embeds = mx.concatenate([prompt_embeds, z, y_next], axis=1)
+                
             logits, _ = get_logits(model, transformer, lm, full_embeds)
             
-            target_logits = logits[:, -len(target_tokens):, :]
+            prefix_len = prompt_embeds.shape[1] + 2
+            target_logits = logits[:, prefix_len - 1 : prefix_len - 1 + target_labels.shape[1], :]
             ce_loss = nn.losses.cross_entropy(target_logits, target_labels)
             return mx.mean(ce_loss)
         else:
@@ -80,10 +109,15 @@ def loss_fn(model, transformer, lm, prompt_tokens, target_tokens, iterations=3, 
             _, hidden = get_logits(model, transformer, lm, injected)
             z_next = hidden[:, -1:, :]
             
-            full_embeds = mx.concatenate([prompt_embeds, z_next, target_embeds_input], axis=1)
+            if target_embeds_input.shape[1] > 0:
+                full_embeds = mx.concatenate([prompt_embeds, z_next, target_embeds_input], axis=1)
+            else:
+                full_embeds = mx.concatenate([prompt_embeds, z_next], axis=1)
+                
             logits, _ = get_logits(model, transformer, lm, full_embeds)
             
-            target_logits = logits[:, -len(target_tokens):, :]
+            prefix_len = prompt_embeds.shape[1] + 1
+            target_logits = logits[:, prefix_len - 1 : prefix_len - 1 + target_labels.shape[1], :]
             ce_loss = nn.losses.cross_entropy(target_logits, target_labels)
             return mx.mean(ce_loss)
     else:
@@ -103,10 +137,15 @@ def loss_fn(model, transformer, lm, prompt_tokens, target_tokens, iterations=3, 
                 _, hidden = get_logits(model, transformer, lm, injected)
                 y = hidden[:, -1:, :]
                 
-                full_embeds = mx.concatenate([prompt_embeds, z, y, target_embeds_input], axis=1)
+                if target_embeds_input.shape[1] > 0:
+                    full_embeds = mx.concatenate([prompt_embeds, z, y, target_embeds_input], axis=1)
+                else:
+                    full_embeds = mx.concatenate([prompt_embeds, z, y], axis=1)
+                    
                 logits, _ = get_logits(model, transformer, lm, full_embeds)
                 
-                target_logits = logits[:, -len(target_tokens):, :]
+                prefix_len = prompt_embeds.shape[1] + 2
+                target_logits = logits[:, prefix_len - 1 : prefix_len - 1 + target_labels.shape[1], :]
                 ce_loss = nn.losses.cross_entropy(target_logits, target_labels)
                 total_loss = total_loss + mx.mean(ce_loss)
             return total_loss / iterations
@@ -119,10 +158,15 @@ def loss_fn(model, transformer, lm, prompt_tokens, target_tokens, iterations=3, 
                 _, hidden = get_logits(model, transformer, lm, injected)
                 z_next = hidden[:, -1:, :]
                 
-                full_embeds = mx.concatenate([prompt_embeds, z_next, target_embeds_input], axis=1)
+                if target_embeds_input.shape[1] > 0:
+                    full_embeds = mx.concatenate([prompt_embeds, z_next, target_embeds_input], axis=1)
+                else:
+                    full_embeds = mx.concatenate([prompt_embeds, z_next], axis=1)
+                    
                 logits, _ = get_logits(model, transformer, lm, full_embeds)
                 
-                target_logits = logits[:, -len(target_tokens):, :]
+                prefix_len = prompt_embeds.shape[1] + 1
+                target_logits = logits[:, prefix_len - 1 : prefix_len - 1 + target_labels.shape[1], :]
                 ce_loss = nn.losses.cross_entropy(target_logits, target_labels)
                 total_loss = total_loss + mx.mean(ce_loss)
                 z = z_next
@@ -144,7 +188,7 @@ def train_continuous_model(
     """Trains a continuous latent model with unrolled recurrence and optional EMA smoothing.
     
     Args:
-        model_path: Path to the base model.
+        model_path: Path to the base model (e.g. google/gemma-4-E2B-it-qat-q4_0-unquantized).
         data_path: Path to the JSONL training data.
         iters: Number of training steps to optimize.
         output_path: Output safetensors file path for trained weights.
@@ -188,7 +232,6 @@ def train_continuous_model(
         ema_weights = None
         state = [model.state, optimizer.state]
 
-    
     for i in range(iters):
         sample = dataset[i % len(dataset)]
         prompt_tokens = tokenizer.encode(sample[0])
@@ -200,19 +243,22 @@ def train_continuous_model(
         optimizer.update(model, grads)
         
         if use_ema:
-            # Update EMA weights
+            # Update EMA weights and mutate state[2] so mx.eval evaluates current EMA graph
             ema_weights = mx_utils.tree_map(
                 lambda ema, param: ema_beta * ema + (1.0 - ema_beta) * param,
                 ema_weights,
                 model.trainable_parameters()
             )
+            state[2] = ema_weights
             
         mx.eval(state) # Evaluates and updates
         
         print(f"Iter {i+1}/{iters} | Loss: {loss.item():.4f}")
         
     print("Training complete!")
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    output_dir = os.path.dirname(output_path)
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
     
     # Select weights to save
     if use_ema:
@@ -239,3 +285,20 @@ def train_continuous_model(
         
     mx.save_safetensors(output_path, trainable_params)
     print(f"Saved weights to {output_path}")
+
+    # Also serialize adapter_config.json alongside the safetensors file
+    config_path = os.path.join(output_dir if output_dir else ".", "adapter_config.json")
+    adapter_config = {
+        "model": model_path,
+        "num_layers": lora_layers,
+        "lora_parameters": lora_config,
+        "recursive_iters": recursive_iters,
+        "dual_latent": dual_latent,
+        "reasoning_steps": reasoning_steps,
+        "trm_mode": trm_mode,
+        "use_ema": use_ema,
+        "ema_beta": ema_beta
+    }
+    with open(config_path, "w") as f:
+        json.dump(adapter_config, f, indent=4)
+    print(f"Saved adapter configuration to {config_path}")

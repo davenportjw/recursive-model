@@ -49,7 +49,20 @@ def main(model_path, data_path, iters, lora_layers):
     # But we'll try an programmatic invocation or recommend the CLI.
     print(f"Configuration: {training_args}")
     
-    # In a real scenario, we might just call the mlx_lm CLI directly via subprocess
+    # Ensure valid.jsonl exists in data directory, or create a copy/split so mlx_lm doesn't crash
+    if os.path.isdir(data_path):
+        train_file = os.path.join(data_path, "train.jsonl")
+        valid_file = os.path.join(data_path, "valid.jsonl")
+        if not os.path.exists(valid_file) and os.path.exists(train_file):
+            print(f"Creating default valid.jsonl from {train_file} for mlx_lm...")
+            with open(train_file, "r") as tf:
+                lines = tf.readlines()
+            # Use last 10% (min 1 sample) for validation
+            split_idx = max(1, int(len(lines) * 0.1))
+            valid_lines = lines[-split_idx:] if len(lines) > 1 else lines
+            with open(valid_file, "w") as vf:
+                vf.writelines(valid_lines)
+
     import sys
     import subprocess
     cmd = [
