@@ -44,5 +44,13 @@ dist/
 build/
 *.egg-info/
 .eggs/
+# Node & Next.js
+node_modules/
+.next/
+out/
+
+# Logs & temp
+*.log
+.pytest_cache/
 
 .env

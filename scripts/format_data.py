@@ -34,7 +34,7 @@ def main(input_file: str, discrete_output: str, continuous_output: str):
             
             draft = traj.get('draft', '')
             critique = traj.get('critique', '')
-            final_code = traj.get('final_code', '')
+            final_code = traj.get('final_code', '') or record.get('canonical_solution', '')
             
             if not final_code:
                 continue

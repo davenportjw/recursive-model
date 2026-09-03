@@ -1,10 +1,56 @@
 import os
 import json
+from typing import Tuple, Any, Optional, Dict, Union, List
 import mlx.core as mx
+import mlx.nn as nn
 from mlx_lm import load
 from mlx_lm.models.cache import make_prompt_cache
 from mlx_lm.tuner.utils import linear_to_lora_layers
-from typing import Tuple, Any, Optional
+
+from tiny_recursive_gemma.memory_guard import (
+    init_memory_guardrails,
+    flush_memory,
+    guarded_memory_scope
+)
+
+_CACHED_MODEL: Optional[Any] = None
+_CACHED_TOKENIZER: Optional[Any] = None
+_CACHED_MODEL_KEY: Optional[Tuple[str, Optional[str]]] = None
+
+def get_or_load_model(model_path: str, adapter_path: Optional[str] = None) -> Tuple[Any, Any]:
+    """Retrieves or loads the model as a singleton to avoid holding multiple copies in unified memory."""
+    global _CACHED_MODEL, _CACHED_TOKENIZER, _CACHED_MODEL_KEY
+    key = (model_path, adapter_path)
+    if _CACHED_MODEL is not None and _CACHED_MODEL_KEY == key:
+        return _CACHED_MODEL, _CACHED_TOKENIZER
+    
+    init_memory_guardrails()
+    flush_memory()
+    print(f"Loading model {model_path} with memory guardrails...")
+    model, tokenizer = load(model_path, adapter_path=adapter_path)
+    _CACHED_MODEL = model
+    _CACHED_TOKENIZER = tokenizer
+    _CACHED_MODEL_KEY = key
+    return model, tokenizer
+
+class ACTHaltingHead(nn.Module):
+    """Adaptive Computation Time (ACT) halting classifier head."""
+    def __init__(self, hidden_dim: int):
+        super().__init__()
+        self.fc = nn.Linear(hidden_dim * 2, 1)
+        # Negative bias initialization to encourage multi-step recurrence early in training
+        self.fc.bias = mx.full((1,), -2.0)
+
+    def __call__(self, y: mx.array, z: mx.array) -> mx.array:
+        """Computes halting probability given solution state y and reasoning state z."""
+        concat = mx.concatenate([y, z], axis=-1)
+        logits = self.fc(concat)
+        return mx.sigmoid(logits)
+
+def rms_norm(x: mx.array, eps: float = 1e-6) -> mx.array:
+    """Applies RMSNorm across the hidden dimension for latent stability."""
+    variance = mx.mean(x ** 2, axis=-1, keepdims=True)
+    return x * mx.rsqrt(variance + eps)
 
 def get_transformer_layers(model: Any) -> Tuple[Any, Any]:
     """Helper to extract the base transformer and language model head.
@@ -77,21 +123,32 @@ def generate_continuous(
     iterations: int = 5,
     dual_latent: bool = True,
     reasoning_steps: int = 3,
-) -> str:
-    """Generates text from a continuous latent model with T iterations.
+    halting_head: Optional[ACTHaltingHead] = None,
+    halt_threshold: float = 0.85,
+    min_iterations: int = 2,
+    normalize_latents: bool = True,
+    return_telemetry: bool = False,
+) -> Union[str, Tuple[str, Dict[str, Any]]]:
+    """Generates text from a continuous latent model with T iterations and optional ACT early stopping.
     
     Args:
         model: The base MLX LM model.
         tokenizer: The tokenizer compatible with the model.
         prompt: The input prompt string.
         max_tokens: Maximum number of tokens to generate.
-        iterations: Number of continuous latent recurrence iterations (T).
+        iterations: Maximum number of continuous latent recurrence iterations (T_max).
         dual_latent: Whether to use separate reasoning (z) and solution (y) states.
         reasoning_steps: Number of reasoning inner steps (n) per iteration in dual mode.
+        halting_head: Optional ACTHaltingHead module for adaptive computation time halting.
+        halt_threshold: Halting probability threshold to trigger early exit (tau).
+        min_iterations: Minimum number of recurrence steps before allowing early exit.
+        normalize_latents: Whether to apply RMSNorm to latent states before injection.
+        return_telemetry: If True, returns (text, telemetry_dict).
         
     Returns:
-        The generated text response.
+        The generated text response, or (text, telemetry_dict) if return_telemetry is True.
     """
+    init_memory_guardrails()
     transformer, lm = get_transformer_layers(model)
     
     prompt_ids = mx.array(tokenizer.encode(prompt))[None]
@@ -106,38 +163,89 @@ def generate_continuous(
         stop_tokens.update(special_ids)
     stop_tokens.discard(None)
     
+    trajectory_distances: List[float] = []
+    z_prev: Optional[mx.array] = None
+    iterations_completed = 0
+    halted_early = False
+    
     if dual_latent:
         # --- Dual Latent Mode (Samsung TRM style) ---
-        # y: Solution state, z: Reasoning/thought state
-        # Initialized with small magnitude for RMSNorm stability
         z = mx.zeros((1, 1, hidden_dim))
         y = mx.zeros((1, 1, hidden_dim))
         
-        for _ in range(iterations):
+        for iter_idx in range(iterations):
+            iterations_completed = iter_idx + 1
+            
             # 1. Update reasoning state z (n times)
             for _ in range(reasoning_steps):
-                injected = mx.concatenate([prompt_embeds, y, z], axis=1)
+                y_inj = rms_norm(y) if normalize_latents else y
+                z_inj = rms_norm(z) if normalize_latents else z
+                injected = mx.concatenate([prompt_embeds, y_inj, z_inj], axis=1)
                 _, hidden_states = get_logits(model, transformer, lm, injected)
                 z = hidden_states[:, -1:, :]
             
             # 2. Update solution state y (1 time)
-            injected = mx.concatenate([prompt_embeds, z, y], axis=1)
+            z_inj = rms_norm(z) if normalize_latents else z
+            y_inj = rms_norm(y) if normalize_latents else y
+            injected = mx.concatenate([prompt_embeds, z_inj, y_inj], axis=1)
             _, hidden_states = get_logits(model, transformer, lm, injected)
             y = hidden_states[:, -1:, :]
+
+            # Force evaluation and flush unused GPU buffers to protect Apple Silicon unified memory
+            mx.eval(z, y)
+            flush_memory()
+            
+            # Track latent trajectory distance d(z_t, z_{t-1})
+            if z_prev is not None:
+                z_flat = z.reshape(-1)
+                z_prev_flat = z_prev.reshape(-1)
+                denom = (mx.linalg.norm(z_flat) * mx.linalg.norm(z_prev_flat)).item()
+                if denom > 1e-8:
+                    cos_sim = (mx.sum(z_flat * z_prev_flat).item()) / denom
+                    trajectory_distances.append(float(max(0.0, 1.0 - cos_sim)))
+            z_prev = z
+            
+            # 3. Check ACT halting head
+            if halting_head is not None:
+                halt_prob = float(halting_head(y, z)[0, 0].item())
+                if (iter_idx + 1) >= min_iterations and halt_prob >= halt_threshold:
+                    halted_early = True
+                    break
             
         # Prime the generation with prompt, final reasoning state z, and final solution state y
-        injected_embeds = mx.concatenate([prompt_embeds, z, y], axis=1)
+        z_inj = rms_norm(z) if normalize_latents else z
+        y_inj = rms_norm(y) if normalize_latents else y
+        injected_embeds = mx.concatenate([prompt_embeds, z_inj, y_inj], axis=1)
     else:
         # --- Single Latent Mode ---
         z = mx.zeros((1, 1, hidden_dim))
-        for _ in range(iterations):
-            injected_embeds = mx.concatenate([prompt_embeds, z], axis=1)
+        for iter_idx in range(iterations):
+            iterations_completed = iter_idx + 1
+            z_inj = rms_norm(z) if normalize_latents else z
+            injected_embeds = mx.concatenate([prompt_embeds, z_inj], axis=1)
             _, hidden_states = get_logits(model, transformer, lm, injected_embeds)
             z = hidden_states[:, -1:, :]
-        injected_embeds = mx.concatenate([prompt_embeds, z], axis=1)
+
+            mx.eval(z)
+            flush_memory()
+            
+            if z_prev is not None:
+                z_flat = z.reshape(-1)
+                z_prev_flat = z_prev.reshape(-1)
+                denom = (mx.linalg.norm(z_flat) * mx.linalg.norm(z_prev_flat)).item()
+                if denom > 1e-8:
+                    cos_sim = (mx.sum(z_flat * z_prev_flat).item()) / denom
+                    trajectory_distances.append(float(max(0.0, 1.0 - cos_sim)))
+            z_prev = z
+            
+        z_inj = rms_norm(z) if normalize_latents else z
+        injected_embeds = mx.concatenate([prompt_embeds, z_inj], axis=1)
     
     # 2. Final pass to generate auto-regressively
-    cache = make_prompt_cache(model)
+    try:
+        cache = make_prompt_cache(model)
+    except Exception:
+        cache = None
     
     # Process prefix
     logits, _ = get_logits(model, transformer, lm, injected_embeds, cache=cache)
@@ -149,7 +257,15 @@ def generate_continuous(
     if next_token.item() not in stop_tokens:
         generated_tokens.append(next_token.item())
     else:
-        return tokenizer.decode(generated_tokens)
+        decoded_text = tokenizer.decode(generated_tokens)
+        if return_telemetry:
+            return decoded_text, {
+                "iterations": iterations_completed,
+                "halted_early": halted_early,
+                "trajectory_distances": trajectory_distances,
+                "generated_token_count": 0
+            }
+        return decoded_text
     
     # Auto-regressive loop
     for _ in range(max_tokens - 1):
@@ -162,19 +278,37 @@ def generate_continuous(
             
         generated_tokens.append(next_token.item())
         
-    return tokenizer.decode(generated_tokens)
+    decoded_text = tokenizer.decode(generated_tokens)
+    flush_memory()
+    if return_telemetry:
+        return decoded_text, {
+            "iterations": iterations_completed,
+            "halted_early": halted_early,
+            "trajectory_distances": trajectory_distances,
+            "generated_token_count": len(generated_tokens)
+        }
+    return decoded_text
 
 class ContinuousLatentPipeline:
     """A pipeline to easily interact with the continuous latent model."""
     def __init__(
         self, 
-        model_path: str, 
+        model_path: Optional[str] = None, 
         adapter_path: Optional[str] = None,
+        model: Optional[Any] = None,
+        tokenizer: Optional[Any] = None,
         lora_layers: int = 2,
-        lora_config: Optional[dict] = None
+        lora_config: Optional[dict] = None,
+        enable_act: bool = False
     ):
-        print(f"Loading base model {model_path}...")
-        self.model, self.tokenizer = load(model_path)
+        init_memory_guardrails()
+        if model is not None and tokenizer is not None:
+            self.model = model
+            self.tokenizer = tokenizer
+        else:
+            target_path = model_path or os.getenv("BASE_MODEL", "google/gemma-4-E2B-it-qat-q4_0-unquantized")
+            self.model, self.tokenizer = get_or_load_model(target_path, adapter_path=adapter_path)
+        self.halting_head: Optional[ACTHaltingHead] = None
         
         if adapter_path:
             config_file = None
@@ -195,6 +329,7 @@ class ContinuousLatentPipeline:
                         saved_cfg = json.load(f)
                         lora_layers = saved_cfg.get("num_layers", lora_layers)
                         lora_config = saved_cfg.get("lora_parameters", lora_config)
+                        enable_act = saved_cfg.get("enable_act", enable_act)
                 except Exception as e:
                     print(f"Warning: could not parse adapter config {config_file}: {e}")
                     
@@ -212,14 +347,27 @@ class ContinuousLatentPipeline:
             
         self.transformer, self.lm = get_transformer_layers(self.model)
         
+        if enable_act:
+            hidden_dim = getattr(self.transformer, "embed_tokens").weight.shape[-1]
+            self.halting_head = ACTHaltingHead(hidden_dim)
+            if adapter_path:
+                act_weights = os.path.join(adapter_path, "act_head.safetensors") if os.path.isdir(adapter_path) else None
+                if act_weights and os.path.exists(act_weights):
+                    print(f"Loading ACT halting head weights from {act_weights}...")
+                    self.halting_head.load_weights(act_weights, strict=False)
+        
     def __call__(
         self, 
         prompt: str, 
         max_tokens: int = 512, 
         iterations: int = 5, 
         dual_latent: bool = True, 
-        reasoning_steps: int = 3
-    ) -> str:
+        reasoning_steps: int = 3,
+        halt_threshold: float = 0.85,
+        min_iterations: int = 2,
+        normalize_latents: bool = True,
+        return_telemetry: bool = False
+    ) -> Union[str, Tuple[str, Dict[str, Any]]]:
         return generate_continuous(
             self.model, 
             self.tokenizer, 
@@ -227,5 +375,10 @@ class ContinuousLatentPipeline:
             max_tokens=max_tokens, 
             iterations=iterations, 
             dual_latent=dual_latent, 
-            reasoning_steps=reasoning_steps
+            reasoning_steps=reasoning_steps,
+            halting_head=self.halting_head,
+            halt_threshold=halt_threshold,
+            min_iterations=min_iterations,
+            normalize_latents=normalize_latents,
+            return_telemetry=return_telemetry
         )

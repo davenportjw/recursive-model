@@ -6,7 +6,7 @@ from tiny_recursive_gemma import train_continuous_model
 load_dotenv()
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="Train Continuous Latent Recurrent LoRA on Gemma 4")
     parser.add_argument(
         "--model", 
         default=os.getenv("BASE_MODEL", "google/gemma-4-E2B-it-qat-q4_0-unquantized"), 
@@ -14,7 +14,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--data", 
-        default="data/continuous_train.jsonl" if os.path.exists("data/continuous_train.jsonl") else "data/train.jsonl", 
+        default="data/continuous_train_augmented.jsonl" if os.path.exists("data/continuous_train_augmented.jsonl") else ("data/continuous_train.jsonl" if os.path.exists("data/continuous_train.jsonl") else "data/train.jsonl"), 
         help="Path to JSONL training data"
     )
     parser.add_argument("--iters", type=int, default=5, help="Number of training steps/samples to optimize")
@@ -24,6 +24,7 @@ if __name__ == "__main__":
         help="Output path for weights"
     )
     parser.add_argument("--lora-layers", type=int, default=2, help="Number of transformer layers from the end to apply LoRA to")
+    parser.add_argument("--lora-rank", type=int, default=4, help="LoRA decomposition rank r")
     parser.add_argument("--recursive-iters", type=int, default=3, help="Number of recursive steps (T)")
     parser.add_argument("--no-trm", dest="trm_mode", action="store_false", help="Disable Samsung TRM gradient-free prefix (defaults to True)")
     
@@ -33,7 +34,12 @@ if __name__ == "__main__":
     parser.add_argument("--no-ema", dest="use_ema", action="store_false", help="Disable Weight EMA stabilization (defaults to True)")
     parser.add_argument("--ema-beta", type=float, default=0.99, help="Weight EMA decay factor (beta)")
     
-    parser.set_defaults(trm_mode=True, dual_latent=True, use_ema=True)
+    parser.add_argument("--act", dest="enable_act", action="store_true", help="Enable Adaptive Computation Time (ACT) halting head")
+    parser.add_argument("--act-loss-weight", type=float, default=0.1, help="BCE loss weight for ACT halting head")
+    parser.add_argument("--deep-supervision-decay", type=float, default=1.0, help="Power gamma for decaying multi-step deep supervision weighting")
+    parser.add_argument("--no-norm", dest="normalize_latents", action="store_false", help="Disable RMSNorm latent regularization")
+    
+    parser.set_defaults(trm_mode=True, dual_latent=True, use_ema=True, enable_act=False, normalize_latents=True)
     args = parser.parse_args()
     
     train_continuous_model(
@@ -42,10 +48,15 @@ if __name__ == "__main__":
         iters=args.iters,
         output_path=args.output,
         lora_layers=args.lora_layers,
+        lora_rank=args.lora_rank,
         trm_mode=args.trm_mode,
         recursive_iters=args.recursive_iters,
         dual_latent=args.dual_latent,
         reasoning_steps=args.reasoning_steps,
         use_ema=args.use_ema,
-        ema_beta=args.ema_beta
+        ema_beta=args.ema_beta,
+        enable_act=args.enable_act,
+        act_loss_weight=args.act_loss_weight,
+        deep_supervision_decay=args.deep_supervision_decay,
+        normalize_latents=args.normalize_latents
     )
