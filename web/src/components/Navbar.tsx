@@ -2,19 +2,22 @@
 
 import React, { useEffect, useState } from "react";
 import {
-  Sparkles,
-  Terminal,
+  Layers,
   Activity,
   BookOpen,
   Cloud,
   Cpu,
   User,
   LogOut,
+  Play,
+  BarChart3,
 } from "lucide-react";
 
+export type NavTab = "architecture" | "examples" | "benchmarks" | "cloud";
+
 interface NavbarProps {
-  activeTab: "option-a" | "option-b" | "deep-dive";
-  setActiveTab: (tab: "option-a" | "option-b" | "deep-dive") => void;
+  activeTab: NavTab;
+  setActiveTab: (tab: NavTab) => void;
 }
 
 interface UserProfile {
@@ -48,90 +51,104 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/95 backdrop-blur-sm">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16">
-          {/* Logo & Title */}
+          {/* Logo & Academic Masthead */}
           <div className="flex items-center space-x-3">
-            <div className="h-9 w-9 rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
-              <Cpu className="h-5 w-5 text-white" />
+            <div className="h-8 w-8 rounded-lg bg-zinc-900 flex items-center justify-center text-white">
+              <Cpu className="h-4 w-4" />
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <span className="font-bold text-base tracking-tight text-white">Tiny Recursive Gemma</span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-800">
-                  Samsung TRM on Gemma 2B
+                <span className="font-bold text-sm tracking-tight text-zinc-900">
+                  Tiny Recursive Gemma
+                </span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded font-mono font-medium bg-zinc-100 text-zinc-600 border border-zinc-200">
+                  Samsung TRM × Gemma 4
                 </span>
               </div>
-              <p className="text-xs text-slate-400 hidden sm:block">
-                Continuous Latent Reasoning vs Discrete Multi-Turn CoT
+              <p className="text-[11px] text-zinc-500 hidden sm:block">
+                Continuous Latent-Space Recurrence (Samsung SAIL Montréal)
               </p>
             </div>
           </div>
 
-          {/* Navigation Tabs */}
-          <nav className="flex items-center space-x-1 sm:space-x-2 bg-slate-900/90 p-1 rounded-xl border border-slate-800">
+          {/* Clean Academic Navigation Tabs */}
+          <nav className="flex items-center space-x-1 bg-zinc-100 p-1 rounded-lg border border-zinc-200/80">
             <button
-              onClick={() => setActiveTab("option-a")}
-              className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
-                activeTab === "option-a"
-                  ? "bg-cyan-600 text-white shadow-md shadow-cyan-600/30"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+              onClick={() => setActiveTab("architecture")}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                activeTab === "architecture"
+                  ? "bg-white text-zinc-900 shadow-xs border border-zinc-200/60 font-semibold"
+                  : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200/50"
               }`}
             >
-              <Activity className="h-4 w-4" />
-              <span>Option A: Benchmark &amp; Research</span>
+              <Layers className="h-3.5 w-3.5 text-sky-700" />
+              <span>1. Architecture &amp; Code</span>
             </button>
 
             <button
-              onClick={() => setActiveTab("option-b")}
-              className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
-                activeTab === "option-b"
-                  ? "bg-blue-600 text-white shadow-md shadow-blue-600/30"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+              onClick={() => setActiveTab("examples")}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                activeTab === "examples"
+                  ? "bg-white text-zinc-900 shadow-xs border border-zinc-200/60 font-semibold"
+                  : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200/50"
               }`}
             >
-              <Terminal className="h-4 w-4" />
-              <span>Option B: Try It Out (Cloud)</span>
+              <Play className="h-3.5 w-3.5 text-zinc-800" />
+              <span>2. Interactive Examples</span>
             </button>
 
             <button
-              onClick={() => setActiveTab("deep-dive")}
-              className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
-                activeTab === "deep-dive"
-                  ? "bg-slate-700 text-white shadow-md"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+              onClick={() => setActiveTab("benchmarks")}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                activeTab === "benchmarks"
+                  ? "bg-white text-zinc-900 shadow-xs border border-zinc-200/60 font-semibold"
+                  : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200/50"
               }`}
             >
-              <BookOpen className="h-4 w-4" />
-              <span>Architecture &amp; Docs</span>
+              <BarChart3 className="h-3.5 w-3.5 text-zinc-800" />
+              <span>3. Empirical Results</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("cloud")}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                activeTab === "cloud"
+                  ? "bg-white text-zinc-900 shadow-xs border border-zinc-200/60 font-semibold"
+                  : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200/50"
+              }`}
+            >
+              <Cloud className="h-3.5 w-3.5 text-zinc-800" />
+              <span>4. Cloud System</span>
             </button>
           </nav>
 
-          {/* User Profile & Sign Out */}
-          <div className="flex items-center space-x-3">
+          {/* User Profile & Actions */}
+          <div className="flex items-center space-x-2">
             {user ? (
               <div className="flex items-center space-x-2">
-                <div className="hidden md:flex items-center space-x-2 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-300">
-                  <div className="w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center text-[10px] font-bold text-white">
+                <div className="hidden md:flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-zinc-50 border border-zinc-200 text-xs text-zinc-700">
+                  <div className="w-4 h-4 rounded-full bg-zinc-800 flex items-center justify-center text-[9px] font-bold text-white">
                     {user.name?.[0]?.toUpperCase() || user.email[0]?.toUpperCase()}
                   </div>
-                  <span className="font-medium max-w-[140px] truncate">{user.email}</span>
+                  <span className="font-medium max-w-[130px] truncate">{user.email}</span>
                 </div>
 
                 <button
                   onClick={handleSignOut}
                   title="Sign Out"
-                  className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-red-300 hover:bg-red-950/40 border border-transparent hover:border-red-800/50 transition-all"
+                  className="flex items-center space-x-1 px-2.5 py-1 rounded-md text-xs font-medium text-zinc-600 hover:text-red-700 hover:bg-red-50 border border-transparent hover:border-red-200 transition-all"
                 >
-                  <LogOut className="h-3.5 w-3.5" />
+                  <LogOut className="h-3 w-3" />
                   <span className="hidden sm:inline">Sign Out</span>
                 </button>
               </div>
             ) : (
-              <div className="hidden lg:flex items-center space-x-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-xs text-slate-300">
-                <Cloud className="h-3.5 w-3.5 text-emerald-400 animate-pulse" />
-                <span>Cloud Run: Active</span>
+              <div className="hidden lg:flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-zinc-50 border border-zinc-200 text-xs text-zinc-600">
+                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span className="font-medium">Cloud Run Active</span>
               </div>
             )}
           </div>

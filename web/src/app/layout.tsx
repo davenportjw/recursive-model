@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Tiny Recursive Gemma | Cloud Showcase & Research Dashboard",
-  description: "Comparing Zero-Shot Baseline, Discrete Recursive CoT, and Continuous Latent TRM on Google Gemma",
+  title: "Tiny Recursive Gemma | Latent-Space Recurrence on Gemma 4",
+  description: "Transferring Samsung SAIL Montréal's Tiny Recursive Model (TRM) continuous latent reasoning to Google Gemma 4 2B.",
 };
 
 export default function RootLayout({
@@ -12,8 +12,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
-      <body className="bg-slate-950 text-slate-100 antialiased min-h-screen">
+    <html lang="en">
+      <body className="bg-[#fbfbfd] text-zinc-900 antialiased min-h-screen selection:bg-sky-100 selection:text-sky-900">
         {children}
       </body>
     </html>
