@@ -33,7 +33,8 @@ steps:
       - '$_LOCATION'
       - '--platform'
       - 'managed'
-      - '--iap'
+      - '--no-iap'
+      - '--allow-unauthenticated'
       - '--port'
       - '8080'
       - '--cpu'
@@ -41,7 +42,7 @@ steps:
       - '--memory'
       - '2Gi'
       - '--set-env-vars'
-      - '^##^GOOGLE_CLOUD_PROJECT=$PROJECT_ID##GOOGLE_CLOUD_REGION=$_LOCATION##LOCAL_DEV=false##ALLOWED_EMAIL_DOMAINS=$_ALLOWED_EMAIL_DOMAINS##SESSION_SECRET=$_SESSION_SECRET##BACKEND_SHARED_SECRET=$_BACKEND_SHARED_SECRET'
+      - '^##^GOOGLE_CLOUD_PROJECT=$PROJECT_ID##GOOGLE_CLOUD_REGION=$_LOCATION##GEMINI_LOCATION=global##LOCAL_DEV=false##ALLOWED_EMAIL_DOMAINS=$_ALLOWED_EMAIL_DOMAINS##SESSION_SECRET=$_SESSION_SECRET##BACKEND_SHARED_SECRET=$_BACKEND_SHARED_SECRET'
 
 substitutions:
   _LOCATION: 'us-central1'

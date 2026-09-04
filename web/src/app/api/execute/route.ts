@@ -4,6 +4,17 @@ import fs from "fs";
 import path from "path";
 import os from "os";
 
+export async function GET() {
+  return NextResponse.json({
+    status: "ok",
+    endpoint: "/api/execute",
+    methods: ["GET", "POST"],
+    runtime: "Python 3 sandboxed execution",
+    timeout_ms: 4000,
+    description: "Executes Python code against candidate unit tests to determine functional pass/fail status."
+  });
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { code, test, entry_point } = await request.json();

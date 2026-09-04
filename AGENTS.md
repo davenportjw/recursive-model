@@ -11,5 +11,14 @@
 
 ## 3. Strict Apple Silicon Hardware Guardrails
 - **CRITICAL DIRECTIVE**: Never execute heavy model training, large weight loading, or unrolled autoregressive loops locally on Apple Silicon to prevent macOS kernel memory watchdog reboots.
-- **LOCAL WORKFLOW**: Local runs are strictly restricted to fast isolated unit tests (`uv run pytest`, ~3.0s, mock tensors only).
+- **LOCAL WORKFLOW**: Local runs are strictly restricted to fast isolated unit tests (`uv run pytest`, ~3.0s, mock tensors only for fast isolated syntax/interface testing).
 - **CLOUD WORKFLOW**: All PyTorch training and heavy recurrence backpropagation must run on Google Cloud Vertex AI Custom Training on dedicated NVIDIA L4 (24GB VRAM) GPUs (`davenport-boutique`, `us-central1`).
+
+## 4. Strict "Never Mock" Directive (Real Execution Only)
+- **CRITICAL DIRECTIVE**: Never mock, simulate, or hardcode fake data, synthetic job progress, fake trajectories, or dummy fallbacks across APIs, routes, evaluations, or benchmarks.
+- **PROHIBITION**:
+  - Never set `continuousCode = cotCode` or duplicate results across distinct model paradigms.
+  - Never use `Math.random()`, fake progress loops (`progress += 30`), or synthetic loss curves to simulate training/benchmarks.
+  - Never use silent mock fallbacks (such as `simulateInference()` or `synthesizeJudgeScores()`) when an API call or backend service fails.
+- **ERROR HANDLING**: If an API, cloud runner, or service call fails (e.g., missing credentials, network timeout, service error), always propagate and surface the true underlying error directly so it can be diagnosed and fixed.
+- **SCOPE**: Applies across all Next.js API routes (`/api/infer`, `/api/cloud`, `/api/judge`, `/api/benchmarks`), web components, Python evaluation scripts, and cloud orchestration.

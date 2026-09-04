@@ -1,13 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 
+export async function GET() {
+  return NextResponse.json({
+    status: "ok",
+    endpoint: "/api/judge",
+    methods: ["GET", "POST"],
+    judge_model: "gemini-3.8-flash",
+    description: "Evaluates candidates across functional correctness, algorithmic soundness, recursive progression, token efficiency, and hallucination resistance.",
+    rubric_categories: [
+      "functional_correctness",
+      "algorithmic_soundness",
+      "recursive_progression",
+      "token_efficiency",
+      "hallucination_resistance"
+    ]
+  });
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { task_prompt, test_suite, candidates } = body;
 
     const project = process.env.GOOGLE_CLOUD_PROJECT || "davenport-boutique";
-    const location = process.env.GOOGLE_CLOUD_REGION || "us-central1";
+    const location = process.env.GEMINI_LOCATION || "global";
 
     try {
       // Use Google Cloud Project Auth (Vertex AI via ADC / IAM)
@@ -88,45 +105,13 @@ Return a STRICT JSON object in this format:
       const evalData = JSON.parse(judgeResp.text || "{}");
       return NextResponse.json(evalData);
     } catch (apiError: any) {
-      console.warn("Vertex AI judge fallback:", apiError.message);
-      return NextResponse.json(synthesizeJudgeScores());
+      console.error("Vertex AI judge error:", apiError);
+      return NextResponse.json(
+        { error: `Judge evaluation failed: ${apiError.message || String(apiError)}` },
+        { status: 502 }
+      );
     }
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-}
-
-function synthesizeJudgeScores() {
-  return {
-    evaluations: {
-      baseline: {
-        functional_correctness: 8,
-        algorithmic_soundness: 8,
-        recursive_progression: 0,
-        token_efficiency: 7,
-        hallucination_resistance: 9,
-        total_score: 6.8,
-        critique: "Valid baseline pass with standard complexity."
-      },
-      discrete: {
-        functional_correctness: 9,
-        algorithmic_soundness: 8,
-        recursive_progression: 7,
-        token_efficiency: 5,
-        hallucination_resistance: 9,
-        total_score: 7.6,
-        critique: "Self-correcting reasoning trace with high token overhead."
-      },
-      continuous: {
-        functional_correctness: 9,
-        algorithmic_soundness: 9,
-        recursive_progression: 7,
-        token_efficiency: 9,
-        hallucination_resistance: 9,
-        total_score: 8.4,
-        critique: "Direct code emission without intermediate token overhead; internal latent states converged cleanly."
-      }
-    },
-    verdict: "Continuous latent TRM achieved comparable correctness with 3.4x fewer output tokens."
-  };
 }

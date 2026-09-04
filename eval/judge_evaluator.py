@@ -95,7 +95,7 @@ Return a STRICT JSON object with this exact structure:
 Do NOT wrap your JSON in markdown fences, return ONLY the raw JSON string.
 """
 
-def init_judge_client(project_id: Optional[str] = None, location: str = "us-central1") -> Optional[genai.Client]:
+def init_judge_client(project_id: Optional[str] = None, location: str = "global") -> Optional[genai.Client]:
     """Initializes the Gemini client for LLM-as-a-Judge evaluation."""
     api_key = os.getenv("GEMINI_API_KEY")
     if api_key:

@@ -20,8 +20,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 2. Bypass authentication for auth callback endpoints
-  if (pathname.startsWith("/api/auth/")) {
+  // 2. Bypass authentication for health check and auth callback endpoints
+  if (pathname.startsWith("/api/auth/") || pathname === "/api/health") {
     return NextResponse.next();
   }
 

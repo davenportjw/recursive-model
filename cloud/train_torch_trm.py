@@ -232,7 +232,7 @@ def train(args):
                     num_layers=2
                 )
                 self.lm_head = nn.Linear(hidden_size, vocab_size)
-            def forward(self, input_ids=None, inputs_embeds=None, labels=None):
+            def forward(self, input_ids=None, inputs_embeds=None, labels=None, **kwargs):
                 if inputs_embeds is None:
                     inputs_embeds = self.embed(input_ids)
                 h = self.layers(inputs_embeds)
@@ -240,7 +240,7 @@ def train(args):
                 loss = None
                 if labels is not None:
                     loss = F.cross_entropy(logits.view(-1, logits.size(-1)), labels.view(-1), ignore_index=-100)
-                return type('Outputs', (), {'loss': loss, 'logits': logits, 'hidden_states': h})()
+                return type('Outputs', (), {'loss': loss, 'logits': logits, 'hidden_states': (h,)})()
             def get_input_embeddings(self):
                 return self.embed
             def save_pretrained(self, path):
@@ -318,15 +318,27 @@ def train(args):
                     y_in = F.rms_norm(y_in, (D,))
                     # Prefix injection
                     step_embeds = torch.cat([inputs_embeds, y_in, z_in], dim=1)
-                    outputs = model(inputs_embeds=step_embeds)
-                    z_in = outputs.logits[:, -1:, :D]  # Latent update
+                    outputs = model(inputs_embeds=step_embeds, output_hidden_states=True)
+                    if hasattr(outputs, "hidden_states") and outputs.hidden_states is not None:
+                        h = outputs.hidden_states[-1]
+                    else:
+                        h = getattr(outputs, "last_hidden_state", None)
+                    if h is not None and h.shape[-1] == D:
+                        z_in = h[:, -1:, :]
+                    else:
+                        z_in = outputs.logits[:, -1:, :D]  # Fallback if hidden states unavailable
 
                 z = z_in
                 # Update solution state y
                 y = F.rms_norm(y_in, (D,))
 
-                # Emitted generation loss for step t
-                loss_step = outputs.loss if outputs.loss is not None else torch.tensor(0.0, device=device)
+                # Emitted generation cross-entropy loss on target labels (ignoring prompt tokens masked with -100)
+                step_logits = outputs.logits[:, :L, :]
+                loss_step = F.cross_entropy(
+                    step_logits.reshape(-1, step_logits.size(-1)),
+                    labels.reshape(-1),
+                    ignore_index=-100
+                )
 
                 # ACT Halting head prediction and BCE loss
                 if args.act:

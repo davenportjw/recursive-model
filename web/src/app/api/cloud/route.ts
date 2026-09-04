@@ -143,41 +143,6 @@ export async function POST(request: NextRequest) {
 
     // 3. GET STATUS / PROGRESS POLL
     if (action === "get_status") {
-      if (currentJob.status === "running") {
-        if (currentJob.type === "training") {
-          const nextProgress = Math.min(100, currentJob.progress + 30);
-          currentJob.progress = nextProgress;
-          const currentEpoch = Math.min(currentJob.totalTasks, Math.ceil((nextProgress / 100) * currentJob.totalTasks));
-          currentJob.completedTasks = currentEpoch;
-          
-          const currentLoss = Math.max(0.65, Number((2.84 - (nextProgress / 100) * 2.1).toFixed(4)));
-          if (!currentJob.lossHistory) currentJob.lossHistory = [];
-          currentJob.lossHistory.push(currentLoss);
-          currentJob.logs.push(`[${new Date().toISOString()}] Epoch ${currentEpoch}/${currentJob.totalTasks} in progress - Loss: ${currentLoss} - Memory VRAM: 9.8GB / 24GB`);
-
-          if (nextProgress >= 100) {
-            currentJob.status = "completed";
-            currentJob.completedAt = new Date().toISOString();
-            currentJob.logs.push(`[${new Date().toISOString()}] Training converged! Final loss: 0.742.`);
-            currentJob.logs.push(`[${new Date().toISOString()}] Saved LoRA adapter weights and ACT head to gs://davenport-boutique-vertex-staging/checkpoints/`);
-          }
-        } else {
-          // Benchmark status
-          const nextProgress = Math.min(100, currentJob.progress + 35);
-          const completed = Math.round((nextProgress / 100) * currentJob.totalTasks);
-          currentJob.progress = nextProgress;
-          currentJob.completedTasks = completed;
-          currentJob.accuracy = 78.5;
-          currentJob.logs.push(`[${new Date().toISOString()}] Completed ${completed}/${currentJob.totalTasks} evaluation benchmarks.`);
-
-          if (nextProgress >= 100) {
-            currentJob.status = "completed";
-            currentJob.completedAt = new Date().toISOString();
-            currentJob.logs.push(`[${new Date().toISOString()}] Benchmark sweep completed successfully. Pass@1: 78.5%. Token savings: 3.42x.`);
-          }
-        }
-      }
-
       return NextResponse.json({
         job: currentJob
       });
