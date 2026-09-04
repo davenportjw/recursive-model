@@ -105,41 +105,43 @@ export default function LoginPage() {
         />
       )}
 
-      <div className="min-h-screen bg-[#fbfbfd] text-zinc-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-[#FAF9F5] text-[#141413] flex flex-col justify-center py-12 sm:px-6 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-          <div className="inline-flex items-center justify-center p-2.5 rounded-xl bg-zinc-900 text-white shadow-xs mb-3">
-            <Cpu className="w-6 h-6" />
+          <div className="inline-flex items-center justify-center p-2.5 rounded-xl bg-[#FAF0EC] text-[#C96442] border border-[#E8D8D0] shadow-xs mb-3">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-[#C96442]">
+              <path d="M4 19V5M4 5H19M4 12H15M4 19H11" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
+          <h1 className="font-editorial text-3xl sm:text-4xl font-normal tracking-tight text-[#141413]">
             Tiny Recursive Gemma
           </h1>
-          <p className="mt-1 text-xs text-zinc-500 font-medium">
+          <p className="mt-1 text-xs text-[#8C887B] font-mono uppercase tracking-wider">
             Continuous Latent Recurrence Research Portal (Gemma 4 2B)
           </p>
         </div>
 
         <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4 sm:px-0">
-          <div className="bg-white py-8 px-6 shadow-xs rounded-xl border border-zinc-200 sm:px-10">
+          <div className="bg-white py-8 px-6 shadow-[0_1px_3px_rgba(0,0,0,0.02)] rounded-2xl border border-[#E8E5DF] sm:px-10">
             <div className="space-y-6">
               <div className="text-center">
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium bg-zinc-100 text-zinc-700 border border-zinc-200 mb-2">
-                  <Shield className="w-3 h-3 text-sky-700" />
-                  <span>Google Cloud Identity-Aware Proxy (IAP)</span>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-mono uppercase tracking-wider bg-[#FAF0EC] text-[#C96442] border border-[#E8D8D0] mb-3">
+                  <Shield className="w-3 h-3 text-[#C96442]" />
+                  <span>Google Cloud IAP Authentication</span>
                 </div>
-                <h2 className="text-base font-semibold text-zinc-900">Sign In to Continue</h2>
-                <p className="text-xs text-zinc-500 mt-1 leading-relaxed">
-                  Access is authenticated via Google Cloud IAP and restricted to authorized organizational domains.
+                <h2 className="text-base font-semibold text-[#141413]">Sign In to Continue</h2>
+                <p className="text-xs text-[#57534E] mt-1.5 leading-relaxed">
+                  Access is authenticated via Google Cloud IAP and restricted to authorized research organization accounts.
                 </p>
               </div>
 
               {/* Error message */}
               {errorMessage && (
-                <div className="rounded-lg bg-red-50 border border-red-200 p-3.5">
+                <div className="rounded-xl bg-[#FAF0EC] border border-[#E8D8D0] p-3.5">
                   <div className="flex items-start gap-2.5">
-                    <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                    <AlertCircle className="w-4 h-4 text-[#C96442] shrink-0 mt-0.5" />
                     <div>
-                      <h4 className="text-xs font-semibold text-red-900">Authentication Failed</h4>
-                      <p className="text-xs text-red-700 mt-0.5">{errorMessage}</p>
+                      <h4 className="text-xs font-semibold text-[#7A361F]">Authentication Failed</h4>
+                      <p className="text-xs text-[#7A361F]/80 mt-0.5">{errorMessage}</p>
                     </div>
                   </div>
                 </div>
@@ -153,16 +155,16 @@ export default function LoginPage() {
                   type="button"
                   onClick={() => handleCloudIdentitySignIn()}
                   disabled={loading}
-                  className="w-full flex justify-center items-center gap-2.5 rounded-lg bg-zinc-900 px-4 py-2.5 text-xs font-medium text-white shadow-xs hover:bg-zinc-800 transition disabled:opacity-50"
+                  className="w-full flex justify-center items-center gap-2.5 rounded-xl bg-[#141413] px-4 py-3 text-xs font-medium text-white shadow-xs hover:bg-[#27272A] transition disabled:opacity-50"
                 >
                   {loading ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin text-zinc-400" />
+                      <Loader2 className="w-4 h-4 animate-spin text-[#8C887B]" />
                       <span>Authenticating Cloud Identity...</span>
                     </>
                   ) : (
                     <>
-                      <Cloud className="h-4 w-4 text-sky-400" />
+                      <Cloud className="h-4 w-4 text-[#C96442]" />
                       <span>Authenticate with Google Cloud</span>
                     </>
                   )}
@@ -171,22 +173,22 @@ export default function LoginPage() {
 
               {/* Developer Bypass (Visible only during local dev) */}
               {isLocalDev && (
-                <div className="pt-3 border-t border-zinc-100">
+                <div className="pt-3 border-t border-[#E8E5DF]">
                   <button
                     type="button"
                     onClick={signInAsDeveloper}
                     disabled={loading}
-                    className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-800 px-4 py-2 text-xs font-medium transition border border-zinc-200"
+                    className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-[#FAF9F5] hover:bg-[#EFECE4] text-[#141413] px-4 py-2.5 text-xs font-medium transition border border-[#E8E5DF]"
                   >
                     <span>Developer Session Bypass</span>
-                    <ArrowRight className="w-3.5 h-3.5 text-zinc-500" />
+                    <ArrowRight className="w-3.5 h-3.5 text-[#8C887B]" />
                   </button>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="mt-6 text-center text-[11px] text-zinc-400">
+          <div className="mt-6 text-center text-xs font-mono text-[#8C887B]">
             Samsung SAIL Montréal (arXiv:2510.04871) · Google Cloud Vertex AI &amp; Cloud Run
           </div>
         </div>

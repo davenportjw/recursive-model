@@ -2,66 +2,79 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #fbfbfd;
-  --foreground: #18181b;
-  --surface: #ffffff;
-  --surface-muted: #f4f4f6;
-  --border: #e4e4e7;
-  --border-muted: #f0f0f2;
-  --text-primary: #09090b;
-  --text-secondary: #52525b;
-  --text-muted: #71717a;
-  --accent-blue: #0284c7;
-  --accent-amber: #b45309;
-  --accent-emerald: #15803d;
-}
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..600;1,6..72,400..600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
-.dark {
-  --background: #09090b;
-  --foreground: #f4f4f5;
-  --surface: #121214;
-  --surface-muted: #18181b;
-  --border: #27272a;
-  --border-muted: #1e1e21;
-  --text-primary: #fafafa;
-  --text-secondary: #a1a1aa;
-  --text-muted: #71717a;
-  --accent-blue: #38bdf8;
-  --accent-amber: #fbbf24;
-  --accent-emerald: #34d399;
+:root {
+  /* Anthropic & Thinking Machines Editorial Paper Palette */
+  --background: #FAF9F5;
+  --surface: #FFFFFF;
+  --surface-subtle: #F4F1EA;
+  --surface-hover: #EFECE4;
+  --border: #E8E5DF;
+  --border-subtle: #F0EDE6;
+  
+  --text-primary: #141413;
+  --text-secondary: #57534E;
+  --text-muted: #8C887B;
+  
+  /* Editorial Accents */
+  --accent-terracotta: #C96442;
+  --accent-terracotta-subtle: #FAF0EC;
+  --accent-ink: #141413;
+  --accent-cerulean: #1E40AF;
+  --accent-cerulean-subtle: #EFF6FF;
+  --accent-sage: #2D6A4F;
+  --accent-sage-subtle: #F0FDF4;
 }
 
 body {
-  color: var(--foreground);
+  color: var(--text-primary);
   background: var(--background);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.01em;
 }
 
-/* Academic subtle scrollbars */
+/* Editorial Title & Serif Utility */
+.font-editorial {
+  font-family: "Newsreader", "Charter", "Georgia", serif;
+  font-feature-settings: "liga" 1, "kern" 1;
+}
+
+/* Swift / Apple Monospace */
+pre, code, kbd, samp {
+  font-family: "JetBrains Mono", "SF Mono", Menlo, Monaco, Consolas, monospace;
+  font-feature-settings: "zero" 1;
+}
+
+/* Subtle editorial scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 3px;
-}
-.dark ::-webkit-scrollbar-thumb {
-  background: #3f3f46;
+  background: #D6D2C9;
+  border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #B8B3A8;
 }
 
-/* Sharp code typography */
-pre, code, kbd, samp {
-  font-family: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+/* Swift hairline divider */
+.hairline-b {
+  border-bottom: 0.5px solid var(--border);
 }
-
+.hairline-t {
+  border-top: 0.5px solid var(--border);
+}
+.hairline-r {
+  border-right: 0.5px solid var(--border);
+}
+.hairline-l {
+  border-left: 0.5px solid var(--border);
+}

@@ -198,41 +198,41 @@ export const ArchitectureStepper: React.FC = () => {
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
       {/* Editorial Header */}
-      <div className="border-b border-zinc-200 pb-6">
-        <div className="flex items-center space-x-2 text-xs font-semibold tracking-wider uppercase text-sky-700 mb-1.5">
+      <div className="border-b border-[#E8E5DF] pb-6">
+        <div className="flex items-center space-x-2 text-[11px] font-mono tracking-wider uppercase text-[#C96442] mb-2">
           <BookOpen className="h-3.5 w-3.5" />
-          <span>Interactive Architectural Specification</span>
+          <span>Architectural Specification · Deep Dive</span>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900">
-          How Tiny Recursive Gemma Works: Step-by-Step
+        <h1 className="font-editorial text-3xl sm:text-4xl font-normal tracking-tight text-[#141413]">
+          Continuous Latent Recurrence on Gemma 4
         </h1>
-        <p className="text-sm text-zinc-600 mt-2 max-w-3xl leading-relaxed">
-          Step through the continuous latent recurrence cycle adapted from Samsung SAIL Montréal (arXiv:2510.04871) to pretrained Google Gemma 4 2B. Inspect the mathematical formulation, tensor flows, and actual implementation code at each stage.
+        <p className="text-sm text-[#57534E] mt-2 max-w-3xl leading-relaxed">
+          Detailed step-by-step breakdown of the continuous latent recurrence cycle adapted from Samsung SAIL Montréal (arXiv:2510.04871) to pretrained Google Gemma 4 2B. Inspect the mathematical formulation, tensor flows, and actual implementation code at each stage.
         </p>
 
         {/* Metric Summary Ribbon */}
-        <div className="grid grid-cols-3 gap-3 mt-5 pt-5 border-t border-zinc-100">
-          <div className="bg-white border border-zinc-200 rounded-lg p-3">
-            <div className="text-[11px] font-medium text-zinc-500 uppercase tracking-wide">Token Reduction</div>
-            <div className="text-xl font-bold text-zinc-900 mt-0.5">~3.4× Fewer</div>
-            <div className="text-[11px] text-zinc-500 mt-0.5">~125 tokens vs ~420 tokens in CoT</div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6 pt-5 border-t border-[#E8E5DF]/60">
+          <div className="bg-white border border-[#E8E5DF] rounded-xl p-4 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+            <div className="text-[11px] font-mono uppercase tracking-wider text-[#8C887B]">Token Reduction</div>
+            <div className="text-2xl font-editorial font-medium text-[#141413] mt-0.5">~3.4× Fewer</div>
+            <div className="text-[11px] text-[#57534E] mt-0.5">~125 tokens vs ~420 tokens in discrete CoT</div>
           </div>
-          <div className="bg-white border border-zinc-200 rounded-lg p-3">
-            <div className="text-[11px] font-medium text-zinc-500 uppercase tracking-wide">Memory Scaling</div>
-            <div className="text-xl font-bold text-zinc-900 mt-0.5">O(1) Constant</div>
-            <div className="text-[11px] text-zinc-500 mt-0.5">Bounded depth via stop-gradient</div>
+          <div className="bg-white border border-[#E8E5DF] rounded-xl p-4 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+            <div className="text-[11px] font-mono uppercase tracking-wider text-[#8C887B]">Memory Complexity</div>
+            <div className="text-2xl font-editorial font-medium text-[#141413] mt-0.5">O(1) Constant</div>
+            <div className="text-[11px] text-[#57534E] mt-0.5">Bounded depth via stop-gradient</div>
           </div>
-          <div className="bg-white border border-zinc-200 rounded-lg p-3">
-            <div className="text-[11px] font-medium text-zinc-500 uppercase tracking-wide">Pass@1 Accuracy</div>
-            <div className="text-xl font-bold text-zinc-900 mt-0.5">100.0% Parity</div>
-            <div className="text-[11px] text-zinc-500 mt-0.5">200-task standardized benchmark suite</div>
+          <div className="bg-white border border-[#E8E5DF] rounded-xl p-4 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+            <div className="text-[11px] font-mono uppercase tracking-wider text-[#8C887B]">Pass@1 Accuracy</div>
+            <div className="text-2xl font-editorial font-medium text-[#141413] mt-0.5">100.0% Parity</div>
+            <div className="text-[11px] text-[#57534E] mt-0.5">200-task standardized benchmark suite</div>
           </div>
         </div>
       </div>
 
-      {/* Stepper Navigation Bar */}
-      <div className="bg-white border border-zinc-200 rounded-xl p-2 shadow-xs">
-        <div className="grid grid-cols-5 gap-1.5">
+      {/* Stepper Navigation: Swift / Anthropic Minimalist Step Switcher */}
+      <div className="bg-white border border-[#E8E5DF] rounded-xl p-2 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
           {STEPS.map((s) => {
             const isActive = s.id === currentStep;
             const isCompleted = s.id < currentStep;
@@ -240,31 +240,31 @@ export const ArchitectureStepper: React.FC = () => {
               <button
                 key={s.id}
                 onClick={() => setCurrentStep(s.id)}
-                className={`text-left p-2.5 rounded-lg transition-all border ${
+                className={`text-left p-2.5 rounded-lg transition-all ${
                   isActive
-                    ? "bg-zinc-900 text-white border-zinc-900 shadow-xs"
+                    ? "bg-[#141413] text-white shadow-xs font-medium"
                     : isCompleted
-                    ? "bg-zinc-50 text-zinc-700 border-zinc-200 hover:bg-zinc-100"
-                    : "bg-transparent text-zinc-500 border-transparent hover:bg-zinc-50"
+                    ? "bg-[#F4F1EA] text-[#57534E] hover:bg-[#EFECE4]"
+                    : "bg-transparent text-[#8C887B] hover:bg-[#F4F1EA]"
                 }`}
               >
-                <div className="flex items-center space-x-1.5 text-[11px] font-medium">
+                <div className="flex items-center space-x-1.5 text-[11px]">
                   <span
-                    className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                    className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-mono ${
                       isActive
-                        ? "bg-sky-400 text-zinc-900"
+                        ? "bg-[#C96442] text-white"
                         : isCompleted
-                        ? "bg-zinc-300 text-zinc-800"
-                        : "bg-zinc-200 text-zinc-600"
+                        ? "bg-[#D6D2C9] text-[#141413]"
+                        : "bg-[#E8E5DF] text-[#8C887B]"
                     }`}
                   >
                     {isCompleted ? "✓" : s.id}
                   </span>
-                  <span className="hidden sm:inline font-mono text-[10px] opacity-80">
+                  <span className="font-mono text-[10px] opacity-75">
                     Step {s.id}
                   </span>
                 </div>
-                <div className="text-xs font-semibold mt-1 truncate">{s.tag}</div>
+                <div className="text-xs font-medium mt-1 truncate">{s.tag}</div>
               </button>
             );
           })}
@@ -272,16 +272,16 @@ export const ArchitectureStepper: React.FC = () => {
       </div>
 
       {/* Active Step Content Container */}
-      <div className="bg-white border border-zinc-200 rounded-xl p-6 shadow-xs space-y-6">
+      <div className="bg-white border border-[#E8E5DF] rounded-xl p-6 sm:p-8 shadow-[0_1px_3px_rgba(0,0,0,0.02)] space-y-6">
         {/* Step Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-100 pb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E8E5DF] pb-4">
           <div>
-            <div className="inline-flex items-center space-x-2 text-xs font-semibold text-sky-700 bg-sky-50 px-2.5 py-1 rounded-md border border-sky-200 mb-1.5">
+            <div className="inline-flex items-center space-x-2 text-xs font-mono text-[#C96442] bg-[#FAF0EC] px-2.5 py-1 rounded-full border border-[#E8D8D0] mb-2">
               <span>Step {step.id} of 5</span>
               <span>·</span>
               <span>{step.tag}</span>
             </div>
-            <h2 className="text-xl font-bold text-zinc-900">{step.title}</h2>
+            <h2 className="font-editorial text-2xl font-normal text-[#141413]">{step.title}</h2>
           </div>
 
           {/* Stepper Controls */}
@@ -289,7 +289,7 @@ export const ArchitectureStepper: React.FC = () => {
             <button
               onClick={() => setCurrentStep((prev) => Math.max(1, prev - 1))}
               disabled={currentStep === 1}
-              className="px-3 py-1.5 rounded-lg border border-zinc-200 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-40 disabled:pointer-events-none flex items-center space-x-1"
+              className="px-3.5 py-1.5 rounded-lg border border-[#E8E5DF] text-xs font-medium text-[#57534E] hover:bg-[#F4F1EA] disabled:opacity-40 disabled:pointer-events-none flex items-center space-x-1.5 transition-colors"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
               <span>Previous</span>
@@ -297,7 +297,7 @@ export const ArchitectureStepper: React.FC = () => {
             <button
               onClick={() => setCurrentStep((prev) => Math.min(STEPS.length, prev + 1))}
               disabled={currentStep === STEPS.length}
-              className="px-3 py-1.5 rounded-lg bg-zinc-900 text-white text-xs font-medium hover:bg-zinc-800 disabled:opacity-40 disabled:pointer-events-none flex items-center space-x-1"
+              className="px-3.5 py-1.5 rounded-lg bg-[#141413] text-white text-xs font-medium hover:bg-[#27272A] disabled:opacity-40 disabled:pointer-events-none flex items-center space-x-1.5 transition-colors"
             >
               <span>Next</span>
               <ArrowRight className="h-3.5 w-3.5" />
@@ -306,11 +306,11 @@ export const ArchitectureStepper: React.FC = () => {
         </div>
 
         {/* Mathematical Equation Callout */}
-        <div className="bg-zinc-50 border border-zinc-200 rounded-lg p-3.5 font-mono text-xs text-zinc-800 overflow-x-auto">
-          <div className="text-[10px] uppercase font-bold tracking-wider text-zinc-500 mb-1 font-sans">
+        <div className="bg-[#FAF9F5] border border-[#E8E5DF] rounded-xl p-4 font-mono text-xs text-[#141413] overflow-x-auto">
+          <div className="text-[10px] uppercase font-mono tracking-wider text-[#8C887B] mb-1">
             Mathematical Formulation
           </div>
-          <div className="text-zinc-900 font-semibold">{step.formula}</div>
+          <div className="text-[#141413] font-semibold">{step.formula}</div>
         </div>
 
         {/* 2-Column Split: Concept & Code */}
@@ -318,39 +318,39 @@ export const ArchitectureStepper: React.FC = () => {
           {/* Column 1: Theoretical Concept & Why It Matters */}
           <div className="space-y-4">
             <div>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-1.5">
+              <h3 className="text-[11px] font-mono uppercase tracking-wider text-[#8C887B] mb-1.5">
                 Theoretical Concept
               </h3>
-              <p className="text-sm text-zinc-700 leading-relaxed">{step.concept}</p>
+              <p className="text-sm text-[#57534E] leading-relaxed">{step.concept}</p>
             </div>
 
-            <div className="bg-sky-50/60 border border-sky-200/80 rounded-lg p-3.5">
-              <h4 className="text-xs font-bold text-sky-900 mb-1">Why this replaces textual CoT:</h4>
-              <p className="text-xs text-sky-950/80 leading-relaxed">{step.whyItMatters}</p>
+            <div className="bg-[#FAF0EC]/60 border border-[#E8D8D0] rounded-xl p-4">
+              <h4 className="text-xs font-medium text-[#7A361F] mb-1">Why this replaces textual CoT:</h4>
+              <p className="text-xs text-[#57534E] leading-relaxed">{step.whyItMatters}</p>
             </div>
 
             {/* Tensor Shapes Table */}
             <div>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2">
+              <h3 className="text-[11px] font-mono uppercase tracking-wider text-[#8C887B] mb-2">
                 Tensor Dimensions & States
               </h3>
-              <div className="border border-zinc-200 rounded-lg overflow-hidden text-xs">
+              <div className="border border-[#E8E5DF] rounded-xl overflow-hidden text-xs">
                 <table className="w-full text-left">
-                  <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-600 text-[11px]">
+                  <thead className="bg-[#FAF9F5] border-b border-[#E8E5DF] text-[#57534E] text-[11px]">
                     <tr>
-                      <th className="py-2 px-3 font-semibold">Tensor</th>
-                      <th className="py-2 px-3 font-semibold font-mono">Shape</th>
-                      <th className="py-2 px-3 font-semibold">Semantic Role</th>
+                      <th className="py-2.5 px-3.5 font-medium">Tensor</th>
+                      <th className="py-2.5 px-3.5 font-medium font-mono">Shape</th>
+                      <th className="py-2.5 px-3.5 font-medium">Semantic Role</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-zinc-100 text-zinc-700">
+                  <tbody className="divide-y divide-[#E8E5DF]/60 text-[#57534E]">
                     {step.tensorShapes.map((t, idx) => (
-                      <tr key={idx} className="hover:bg-zinc-50/60">
-                        <td className="py-2 px-3 font-bold font-mono text-zinc-900">{t.name}</td>
-                        <td className="py-2 px-3 font-mono text-[11px] text-sky-700 bg-sky-50/40">
+                      <tr key={idx} className="hover:bg-[#FAF9F5]">
+                        <td className="py-2.5 px-3.5 font-bold font-mono text-[#141413]">{t.name}</td>
+                        <td className="py-2.5 px-3.5 font-mono text-[11px] text-[#C96442] bg-[#FAF0EC]/40">
                           {t.shape}
                         </td>
-                        <td className="py-2 px-3 text-zinc-600">{t.description}</td>
+                        <td className="py-2.5 px-3.5 text-[#57534E]">{t.description}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -361,10 +361,10 @@ export const ArchitectureStepper: React.FC = () => {
 
           {/* Column 2: Exact Code Implementation */}
           <div className="flex flex-col">
-            <div className="flex items-center justify-between bg-zinc-900 text-zinc-400 px-4 py-2 rounded-t-lg text-xs font-mono border-b border-zinc-800">
+            <div className="flex items-center justify-between bg-[#1E1E20] text-[#A1A1AA] px-4 py-2.5 rounded-t-xl text-xs font-mono border-b border-[#27272A]">
               <div className="flex items-center space-x-2">
-                <FileCode className="h-3.5 w-3.5 text-sky-400" />
-                <span className="text-zinc-200">{step.codeLineReference}</span>
+                <FileCode className="h-3.5 w-3.5 text-[#C96442]" />
+                <span className="text-[#FAFAFA]">{step.codeLineReference}</span>
               </div>
               <button
                 onClick={handleCopyCode}
@@ -384,91 +384,91 @@ export const ArchitectureStepper: React.FC = () => {
                 )}
               </button>
             </div>
-            <div className="bg-zinc-950 p-4 rounded-b-lg border border-zinc-900 text-xs font-mono text-zinc-200 overflow-x-auto flex-grow leading-relaxed">
+            <div className="bg-[#141416] p-4 rounded-b-xl border border-[#27272A] text-xs font-mono text-[#E4E4E7] overflow-x-auto flex-grow leading-relaxed">
               <pre className="whitespace-pre">{step.codeSnippet}</pre>
             </div>
           </div>
         </div>
 
         {/* Step-by-Step Data Flow Visual Diagram */}
-        <div className="pt-4 border-t border-zinc-100">
-          <div className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-3">
+        <div className="pt-5 border-t border-[#E8E5DF]">
+          <div className="text-[11px] font-mono uppercase tracking-wider text-[#8C887B] mb-3">
             Tensor Pathway for Step {step.id}
           </div>
-          <div className="bg-zinc-50 border border-zinc-200 rounded-lg p-4 flex flex-wrap items-center justify-center gap-2 sm:gap-4 text-xs font-mono">
+          <div className="bg-[#FAF9F5] border border-[#E8E5DF] rounded-xl p-4 flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-xs font-mono">
             <div
-              className={`px-3 py-1.5 rounded border ${
+              className={`px-3 py-1.5 rounded-lg border ${
                 step.id >= 1
-                  ? "bg-white border-zinc-300 text-zinc-900 font-bold"
-                  : "bg-zinc-100 border-zinc-200 text-zinc-400"
+                  ? "bg-white border-[#D6D2C9] text-[#141413] font-semibold"
+                  : "bg-[#F4F1EA] border-[#E8E5DF] text-[#8C887B]"
               }`}
             >
               Prompt X [1, N, 2048]
             </div>
 
-            <ArrowRight className="h-3.5 w-3.5 text-zinc-400" />
+            <ArrowRight className="h-3.5 w-3.5 text-[#8C887B]" />
 
             <div
-              className={`px-3 py-1.5 rounded border ${
+              className={`px-3 py-1.5 rounded-lg border ${
                 step.id === 1
-                  ? "bg-sky-50 border-sky-400 text-sky-800 font-bold ring-2 ring-sky-200"
+                  ? "bg-[#FAF0EC] border-[#C96442] text-[#C96442] font-semibold"
                   : step.id > 1
-                  ? "bg-white border-zinc-300 text-zinc-800 font-semibold"
-                  : "bg-zinc-100 border-zinc-200 text-zinc-400"
+                  ? "bg-white border-[#D6D2C9] text-[#141413]"
+                  : "bg-[#F4F1EA] border-[#E8E5DF] text-[#8C887B]"
               }`}
             >
               Init (z_0=0, y_0=0)
             </div>
 
-            <ArrowRight className="h-3.5 w-3.5 text-zinc-400" />
+            <ArrowRight className="h-3.5 w-3.5 text-[#8C887B]" />
 
             <div
-              className={`px-3 py-1.5 rounded border ${
+              className={`px-3 py-1.5 rounded-lg border ${
                 step.id === 2
-                  ? "bg-sky-50 border-sky-400 text-sky-800 font-bold ring-2 ring-sky-200"
+                  ? "bg-[#FAF0EC] border-[#C96442] text-[#C96442] font-semibold"
                   : step.id > 2
-                  ? "bg-white border-zinc-300 text-zinc-800 font-semibold"
-                  : "bg-zinc-100 border-zinc-200 text-zinc-400"
+                  ? "bg-white border-[#D6D2C9] text-[#141413]"
+                  : "bg-[#F4F1EA] border-[#E8E5DF] text-[#8C887B]"
               }`}
             >
               Inner Loop: z_t^(k) (×n)
             </div>
 
-            <ArrowRight className="h-3.5 w-3.5 text-zinc-400" />
+            <ArrowRight className="h-3.5 w-3.5 text-[#8C887B]" />
 
             <div
-              className={`px-3 py-1.5 rounded border ${
+              className={`px-3 py-1.5 rounded-lg border ${
                 step.id === 3
-                  ? "bg-sky-50 border-sky-400 text-sky-800 font-bold ring-2 ring-sky-200"
+                  ? "bg-[#FAF0EC] border-[#C96442] text-[#C96442] font-semibold"
                   : step.id > 3
-                  ? "bg-white border-zinc-300 text-zinc-800 font-semibold"
-                  : "bg-zinc-100 border-zinc-200 text-zinc-400"
+                  ? "bg-white border-[#D6D2C9] text-[#141413]"
+                  : "bg-[#F4F1EA] border-[#E8E5DF] text-[#8C887B]"
               }`}
             >
               Solution Update: y_t (×1)
             </div>
 
-            <ArrowRight className="h-3.5 w-3.5 text-zinc-400" />
+            <ArrowRight className="h-3.5 w-3.5 text-[#8C887B]" />
 
             <div
-              className={`px-3 py-1.5 rounded border ${
+              className={`px-3 py-1.5 rounded-lg border ${
                 step.id === 4
-                  ? "bg-sky-50 border-sky-400 text-sky-800 font-bold ring-2 ring-sky-200"
+                  ? "bg-[#FAF0EC] border-[#C96442] text-[#C96442] font-semibold"
                   : step.id > 4
-                  ? "bg-white border-zinc-300 text-zinc-800 font-semibold"
-                  : "bg-zinc-100 border-zinc-200 text-zinc-400"
+                  ? "bg-white border-[#D6D2C9] text-[#141413]"
+                  : "bg-[#F4F1EA] border-[#E8E5DF] text-[#8C887B]"
               }`}
             >
               ACT Gate: h_t ≥ 0.85?
             </div>
 
-            <ArrowRight className="h-3.5 w-3.5 text-zinc-400" />
+            <ArrowRight className="h-3.5 w-3.5 text-[#8C887B]" />
 
             <div
-              className={`px-3 py-1.5 rounded border ${
+              className={`px-3 py-1.5 rounded-lg border ${
                 step.id === 5
-                  ? "bg-sky-50 border-sky-400 text-sky-800 font-bold ring-2 ring-sky-200"
-                  : "bg-zinc-100 border-zinc-200 text-zinc-400"
+                  ? "bg-[#FAF0EC] border-[#C96442] text-[#C96442] font-semibold"
+                  : "bg-[#F4F1EA] border-[#E8E5DF] text-[#8C887B]"
               }`}
             >
               Direct Code Emission

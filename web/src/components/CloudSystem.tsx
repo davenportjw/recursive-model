@@ -60,71 +60,71 @@ export const CloudSystem: React.FC = () => {
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
       {/* Editorial Header */}
-      <div className="border-b border-zinc-200 pb-6">
-        <div className="flex items-center space-x-2 text-xs font-semibold tracking-wider uppercase text-sky-700 mb-1.5">
+      <div className="border-b border-[#E8E5DF] pb-6">
+        <div className="flex items-center space-x-2 text-[11px] font-mono tracking-wider uppercase text-[#C96442] mb-2">
           <Cloud className="h-3.5 w-3.5" />
           <span>Cloud Infrastructure & Topology</span>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900">
+        <h1 className="font-editorial text-3xl sm:text-4xl font-normal tracking-tight text-[#141413]">
           Google Cloud Vertex AI & Hardware Safeguards
         </h1>
-        <p className="text-sm text-zinc-600 mt-2 max-w-3xl leading-relaxed">
+        <p className="text-sm text-[#57534E] mt-2 max-w-3xl leading-relaxed">
           Due to strict Apple Silicon memory watchdog guardrails, all continuous latent training and recurrence backpropagation run on dedicated Google Cloud Vertex AI NVIDIA L4 (24GB VRAM) instances.
         </p>
 
-        {/* Status Strip */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5">
-          <div className="bg-white border border-zinc-200 rounded-lg p-3">
-            <div className="text-[11px] font-medium text-zinc-500 uppercase tracking-wide">Target Hardware</div>
-            <div className="text-base font-bold text-zinc-900 mt-0.5">NVIDIA L4 (24GB)</div>
-            <div className="text-[11px] text-zinc-500 mt-0.5">g2-standard-8 · us-central1</div>
+        {/* Status Strip: Metric cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6">
+          <div className="bg-[#FAF9F5] border border-[#E8E5DF] rounded-xl p-4">
+            <div className="text-[11px] font-mono text-[#8C887B] uppercase tracking-wider">Target Hardware</div>
+            <div className="text-base font-semibold text-[#141413] mt-1">NVIDIA L4 (24GB)</div>
+            <div className="text-xs text-[#57534E] mt-0.5 font-mono">g2-standard-8 · us-central1</div>
           </div>
-          <div className="bg-white border border-zinc-200 rounded-lg p-3">
-            <div className="text-[11px] font-medium text-zinc-500 uppercase tracking-wide">Model Backbone</div>
-            <div className="text-base font-bold text-zinc-900 mt-0.5">Google Gemma 4 2B</div>
-            <div className="text-[11px] text-zinc-500 mt-0.5">LoRA rank=16 · alpha=32</div>
+          <div className="bg-[#FAF9F5] border border-[#E8E5DF] rounded-xl p-4">
+            <div className="text-[11px] font-mono text-[#8C887B] uppercase tracking-wider">Model Backbone</div>
+            <div className="text-base font-semibold text-[#141413] mt-1">Google Gemma 4 2B</div>
+            <div className="text-xs text-[#57534E] mt-0.5 font-mono">LoRA rank=16 · alpha=32</div>
           </div>
-          <div className="bg-white border border-zinc-200 rounded-lg p-3">
-            <div className="text-[11px] font-medium text-zinc-500 uppercase tracking-wide">Local Policy</div>
-            <div className="text-base font-bold text-emerald-700 mt-0.5">Strict Isolation</div>
-            <div className="text-[11px] text-zinc-500 mt-0.5">Mock tensors only (pytest ~3s)</div>
+          <div className="bg-[#FAF9F5] border border-[#E8E5DF] rounded-xl p-4">
+            <div className="text-[11px] font-mono text-[#8C887B] uppercase tracking-wider">Local Policy</div>
+            <div className="text-base font-semibold text-[#2D6A4F] mt-1">Strict Isolation</div>
+            <div className="text-xs text-[#57534E] mt-0.5 font-mono">Mock tensors only (pytest ~3s)</div>
           </div>
         </div>
       </div>
 
       {/* Cloud Topology Diagram */}
-      <div className="bg-white border border-zinc-200 rounded-xl p-6 shadow-xs space-y-4">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-500">
+      <div className="bg-white border border-[#E8E5DF] rounded-xl p-6 sm:p-8 shadow-[0_1px_3px_rgba(0,0,0,0.02)] space-y-5">
+        <h2 className="text-[11px] font-mono uppercase tracking-wider text-[#8C887B]">
           Distributed System Topology
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-          <div className="border border-zinc-200 rounded-lg p-4 bg-zinc-50/50 space-y-2">
-            <div className="flex items-center space-x-2 text-zinc-800 font-bold">
-              <Server className="h-4 w-4 text-sky-600" />
+          <div className="border border-[#E8E5DF] rounded-xl p-5 bg-[#FAF9F5] space-y-2">
+            <div className="flex items-center space-x-2 text-[#141413] font-semibold">
+              <Server className="h-4 w-4 text-[#C96442]" />
               <span>1. Cloud Run Serving Tier</span>
             </div>
-            <p className="text-zinc-600 text-[11px] leading-relaxed">
+            <p className="text-[#57534E] text-xs leading-relaxed">
               Stateless Next.js 15 App Router handling user interaction, live benchmark inspection, and proxying inference via Vertex AI Gemini 3.8 Flash.
             </p>
           </div>
 
-          <div className="border border-zinc-200 rounded-lg p-4 bg-zinc-50/50 space-y-2">
-            <div className="flex items-center space-x-2 text-zinc-800 font-bold">
-              <Cpu className="h-4 w-4 text-sky-600" />
+          <div className="border border-[#E8E5DF] rounded-xl p-5 bg-[#FAF9F5] space-y-2">
+            <div className="flex items-center space-x-2 text-[#141413] font-semibold">
+              <Cpu className="h-4 w-4 text-[#C96442]" />
               <span>2. Vertex AI Custom Training</span>
             </div>
-            <p className="text-zinc-600 text-[11px] leading-relaxed">
+            <p className="text-[#57534E] text-xs leading-relaxed">
               Dedicated GPU worker (NVIDIA L4 24GB VRAM) executing unrolled continuous recurrence backpropagation without host kernel memory exhaustion.
             </p>
           </div>
 
-          <div className="border border-zinc-200 rounded-lg p-4 bg-zinc-50/50 space-y-2">
-            <div className="flex items-center space-x-2 text-zinc-800 font-bold">
-              <HardDrive className="h-4 w-4 text-sky-600" />
+          <div className="border border-[#E8E5DF] rounded-xl p-5 bg-[#FAF9F5] space-y-2">
+            <div className="flex items-center space-x-2 text-[#141413] font-semibold">
+              <HardDrive className="h-4 w-4 text-[#C96442]" />
               <span>3. Cloud Storage Checkpoints</span>
             </div>
-            <p className="text-zinc-600 text-[11px] leading-relaxed">
+            <p className="text-[#57534E] text-xs leading-relaxed">
               Durable storage for continuous latent LoRA weights, ACT halting classifier weights, and precomputed 200-task JSONL evaluation artifacts.
             </p>
           </div>
@@ -132,11 +132,11 @@ export const CloudSystem: React.FC = () => {
       </div>
 
       {/* Cloud Dispatch Center */}
-      <div className="bg-white border border-zinc-200 rounded-xl p-6 shadow-xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-100 pb-3">
+      <div className="bg-white border border-[#E8E5DF] rounded-xl p-6 sm:p-8 shadow-[0_1px_3px_rgba(0,0,0,0.02)] space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E8E5DF] pb-4">
           <div>
-            <h2 className="text-sm font-bold text-zinc-900">Vertex AI Custom Job Dispatch</h2>
-            <p className="text-xs text-zinc-500">
+            <h2 className="text-sm font-semibold text-[#141413]">Vertex AI Custom Job Dispatch</h2>
+            <p className="text-xs text-[#57534E] mt-0.5">
               Submit PyTorch training or automated benchmark evaluation sweeps to Google Cloud.
             </p>
           </div>
@@ -145,7 +145,7 @@ export const CloudSystem: React.FC = () => {
             <button
               onClick={() => handleDispatch("train")}
               disabled={dispatching !== null}
-              className="px-3.5 py-1.5 rounded-lg text-xs font-medium bg-zinc-900 text-white hover:bg-zinc-800 transition-colors flex items-center space-x-1.5 disabled:opacity-50"
+              className="px-4 py-2 rounded-lg text-xs font-medium bg-[#141413] text-white hover:bg-[#27272A] transition-colors flex items-center space-x-1.5 disabled:opacity-50"
             >
               <Play className="h-3.5 w-3.5 fill-current" />
               <span>{dispatching === "train" ? "Dispatching..." : "Launch L4 Training Job"}</span>
@@ -153,9 +153,9 @@ export const CloudSystem: React.FC = () => {
             <button
               onClick={() => handleDispatch("benchmark")}
               disabled={dispatching !== null}
-              className="px-3.5 py-1.5 rounded-lg text-xs font-medium border border-zinc-200 text-zinc-800 hover:bg-zinc-50 transition-colors flex items-center space-x-1.5 disabled:opacity-50"
+              className="px-4 py-2 rounded-lg text-xs font-medium border border-[#E8E5DF] bg-[#FAF9F5] text-[#141413] hover:bg-[#EFECE4] transition-colors flex items-center space-x-1.5 disabled:opacity-50"
             >
-              <Cpu className="h-3.5 w-3.5 text-sky-600" />
+              <Cpu className="h-3.5 w-3.5 text-[#C96442]" />
               <span>{dispatching === "benchmark" ? "Dispatching..." : "Run 200-Task Sweep"}</span>
             </button>
           </div>
@@ -163,14 +163,14 @@ export const CloudSystem: React.FC = () => {
 
         {/* Live / Simulated Streaming Console */}
         <div>
-          <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1.5">
+          <div className="flex items-center justify-between text-[11px] font-mono uppercase tracking-wider text-[#8C887B] mb-2">
             <span className="flex items-center space-x-1.5">
-              <Terminal className="h-3 w-3" />
+              <Terminal className="h-3.5 w-3.5" />
               <span>Vertex AI Console Stream</span>
             </span>
-            <span className="text-emerald-700">Connected · us-central1</span>
+            <span className="text-[#2D6A4F] font-semibold">Connected · us-central1</span>
           </div>
-          <div className="bg-zinc-950 p-3.5 rounded-lg text-xs font-mono text-zinc-300 space-y-1 max-h-48 overflow-y-auto border border-zinc-900">
+          <div className="bg-[#141416] p-4 rounded-xl text-xs font-mono text-[#E4E4E7] space-y-1.5 max-h-52 overflow-y-auto border border-[#27272A]">
             {activeLogs.map((log, i) => (
               <div key={i} className="leading-relaxed">
                 {log}
