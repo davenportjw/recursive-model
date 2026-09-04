@@ -33,7 +33,7 @@ steps:
       - '$_LOCATION'
       - '--platform'
       - 'managed'
-      - '--allow-unauthenticated'
+      - '--iap'
       - '--port'
       - '8080'
       - '--cpu'
