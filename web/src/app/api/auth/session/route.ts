@@ -4,6 +4,7 @@ import {
   isEmailAuthorized,
   verifyGoogleIdToken,
   createSessionToken,
+  extractIapUserEmail,
 } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
@@ -12,27 +13,19 @@ export async function POST(request: NextRequest) {
 
     const contentType = request.headers.get("content-type") || "";
     if (contentType.includes("application/json")) {
-      const body = await request.json();
-      idToken = body.idToken;
-    } else if (contentType.includes("application/x-www-form-urlencoded")) {
-      const formData = await request.formData();
-      idToken = (formData.get("idToken") as string) || "";
-    } else {
-      const body = await request.text();
       try {
-        const parsed = JSON.parse(body);
-        idToken = parsed.idToken;
+        const body = await request.json();
+        idToken = body?.idToken || "";
       } catch {
-        const params = new URLSearchParams(body);
-        idToken = params.get("idToken") || "";
+        // no json body
       }
-    }
-
-    if (!idToken || !idToken.trim()) {
-      return NextResponse.json(
-        { error: "Missing idToken parameter" },
-        { status: 400 }
-      );
+    } else if (contentType.includes("application/x-www-form-urlencoded")) {
+      try {
+        const formData = await request.formData();
+        idToken = (formData.get("idToken") as string) || "";
+      } catch {
+        // no form data
+      }
     }
 
     const isLocalDev = process.env.LOCAL_DEV === "true";
@@ -46,7 +39,59 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify token
+    // Check 1: Cloud Run Identity-Aware Proxy (IAP) header
+    const iapEmail = extractIapUserEmail(request.headers);
+    if (iapEmail) {
+      if (!isEmailAuthorized(iapEmail, allowedDomains)) {
+        return NextResponse.json(
+          { error: `Access restricted. ${iapEmail} is not authorized.` },
+          { status: 403 }
+        );
+      }
+
+      const expiresInSeconds = 5 * 24 * 60 * 60;
+      const exp = Math.floor(Date.now() / 1000) + expiresInSeconds;
+      const userName = iapEmail.split("@")[0];
+
+      const sessionCookieValue = await createSessionToken({
+        email: iapEmail,
+        name: userName,
+        picture: "",
+        exp,
+      });
+
+      const response = NextResponse.json({
+        status: "success",
+        source: "iap",
+        user: {
+          email: iapEmail,
+          name: userName,
+          picture: "",
+        },
+      });
+
+      response.cookies.set({
+        name: "session",
+        value: sessionCookieValue,
+        maxAge: expiresInSeconds,
+        path: "/",
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+      });
+
+      return response;
+    }
+
+    // Check 2: Missing idToken when no IAP header is present
+    if (!idToken || !idToken.trim()) {
+      return NextResponse.json(
+        { error: "Missing idToken parameter and no Cloud Run IAP identity detected." },
+        { status: 400 }
+      );
+    }
+
+    // Check 3: Token verification (Google OAuth ID Token or local dev bypass)
     const userInfo = await verifyGoogleIdToken(idToken.trim());
     if (!userInfo) {
       return NextResponse.json(
@@ -80,6 +125,7 @@ export async function POST(request: NextRequest) {
 
     const response = NextResponse.json({
       status: "success",
+      source: "token",
       user: {
         email: userInfo.email,
         name: userInfo.name,
@@ -105,4 +151,9 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+export async function GET(request: NextRequest) {
+  // Allow GET /api/auth/session to auto-initialize session if IAP header is present
+  return POST(request);
 }

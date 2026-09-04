@@ -48,6 +48,53 @@ export function isEmailAuthorized(email: string, allowedList: string[]): boolean
 }
 
 /**
+ * Extracts authenticated user email from Google Cloud Identity-Aware Proxy (IAP)
+ * or Cloud Run authenticated ingress headers.
+ */
+export function extractIapUserEmail(headers: Headers): string | null {
+  // 1. Direct Google Authenticated User Email header
+  const authEmail =
+    headers.get("x-goog-authenticated-user-email") ||
+    headers.get("x-forwarded-user-email") ||
+    headers.get("x-user-email") ||
+    headers.get("x-goog-user-email");
+
+  if (authEmail && authEmail.trim()) {
+    // Header format is typically "accounts.google.com:username@domain.com"
+    const cleaned = authEmail.includes(":")
+      ? authEmail.split(":").pop()!.trim()
+      : authEmail.trim();
+    if (cleaned.includes("@")) {
+      return cleaned.toLowerCase();
+    }
+  }
+
+  // 2. Google IAP JWT Assertion header (x-goog-iap-jwt-assertion)
+  const iapJwt = headers.get("x-goog-iap-jwt-assertion");
+  if (iapJwt && iapJwt.includes(".")) {
+    try {
+      const parts = iapJwt.split(".");
+      if (parts.length >= 2) {
+        // Base64URL decode the JWT payload
+        const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+        const jsonStr =
+          typeof atob !== "undefined"
+            ? atob(base64)
+            : Buffer.from(base64, "base64").toString("utf-8");
+        const payload = JSON.parse(jsonStr);
+        if (payload.email && typeof payload.email === "string") {
+          return payload.email.toLowerCase().trim();
+        }
+      }
+    } catch (e) {
+      console.warn("[Auth] Failed to parse x-goog-iap-jwt-assertion payload:", e);
+    }
+  }
+
+  return null;
+}
+
+/**
  * Parses the ALLOWED_EMAIL_DOMAINS environment variable into a clean string array.
  */
 export function getAllowedEmailDomains(): string[] {
