@@ -1,14 +1,52 @@
 "use client";
 
-import React from "react";
-import { Sparkles, Terminal, Activity, BookOpen, Cloud, Cpu, ArrowUpRight } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import {
+  Sparkles,
+  Terminal,
+  Activity,
+  BookOpen,
+  Cloud,
+  Cpu,
+  User,
+  LogOut,
+} from "lucide-react";
 
 interface NavbarProps {
   activeTab: "option-a" | "option-b" | "deep-dive";
   setActiveTab: (tab: "option-a" | "option-b" | "deep-dive") => void;
 }
 
+interface UserProfile {
+  email: string;
+  name: string;
+  picture?: string;
+}
+
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
+  const [user, setUser] = useState<UserProfile | null>(null);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.authenticated && data?.user) {
+          setUser(data.user);
+        }
+      })
+      .catch(() => {
+        // Ignore network errors or unauthenticated state
+      });
+  }, []);
+
+  const handleSignOut = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } finally {
+      window.location.href = "/login";
+    }
+  };
+
   return (
     <header className="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -42,7 +80,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
               }`}
             >
               <Activity className="h-4 w-4" />
-              <span>Option A: Benchmark & Research</span>
+              <span>Option A: Benchmark &amp; Research</span>
             </button>
 
             <button
@@ -70,12 +108,32 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
             </button>
           </nav>
 
-          {/* Cloud Status Indicator */}
-          <div className="hidden lg:flex items-center space-x-3">
-            <div className="flex items-center space-x-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-xs text-slate-300">
-              <Cloud className="h-3.5 w-3.5 text-emerald-400 animate-pulse" />
-              <span>Google Cloud Run: Active</span>
-            </div>
+          {/* User Profile & Sign Out */}
+          <div className="flex items-center space-x-3">
+            {user ? (
+              <div className="flex items-center space-x-2">
+                <div className="hidden md:flex items-center space-x-2 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-300">
+                  <div className="w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center text-[10px] font-bold text-white">
+                    {user.name?.[0]?.toUpperCase() || user.email[0]?.toUpperCase()}
+                  </div>
+                  <span className="font-medium max-w-[140px] truncate">{user.email}</span>
+                </div>
+
+                <button
+                  onClick={handleSignOut}
+                  title="Sign Out"
+                  className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-red-300 hover:bg-red-950/40 border border-transparent hover:border-red-800/50 transition-all"
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Sign Out</span>
+                </button>
+              </div>
+            ) : (
+              <div className="hidden lg:flex items-center space-x-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-xs text-slate-300">
+                <Cloud className="h-3.5 w-3.5 text-emerald-400 animate-pulse" />
+                <span>Cloud Run: Active</span>
+              </div>
+            )}
           </div>
         </div>
       </div>

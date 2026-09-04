@@ -41,14 +41,15 @@ steps:
       - '--memory'
       - '2Gi'
       - '--set-env-vars'
-      - 'GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_CLOUD_REGION=$_LOCATION,LOCAL_DEV=false,BASIC_AUTH_USER=$_BASIC_AUTH_USER,BASIC_AUTH_PASSWORD=$_BASIC_AUTH_PASSWORD'
+      - 'GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_CLOUD_REGION=$_LOCATION,LOCAL_DEV=false,ALLOWED_EMAIL_DOMAINS=$_ALLOWED_EMAIL_DOMAINS,SESSION_SECRET=$_SESSION_SECRET,BACKEND_SHARED_SECRET=$_BACKEND_SHARED_SECRET'
 
 substitutions:
   _LOCATION: 'us-central1'
   _REPO_NAME: 'tiny-recursive-gemma'
   _SERVICE_NAME: 'tiny-recursive-gemma-web'
-  _BASIC_AUTH_USER: 'admin'
-  _BASIC_AUTH_PASSWORD: 'changeme-in-production'
+  _ALLOWED_EMAIL_DOMAINS: 'google.com,joonix.net,davenportjw@gmail.com'
+  _SESSION_SECRET: 'tiny-recursive-gemma-prod-session-secret-key-32chars!'
+  _BACKEND_SHARED_SECRET: 'gemma-recursive-shared-secret-2026'
 
 images:
   - '$_LOCATION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME/$_SERVICE_NAME:$BUILD_ID'
