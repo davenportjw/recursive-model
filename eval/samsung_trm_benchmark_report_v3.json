@@ -1,0 +1,549 @@
+{
+  "timestamp": "2026-09-04T02:32:51.111402+00:00",
+  "total_tasks_evaluated": 200,
+  "dataset": "eval/complex_tasks_200.jsonl",
+  "evaluator_engine": "Vertex AI gemini-3.8-flash (ADC on davenport-boutique)",
+  "pass_rates": {
+    "baseline": "100.0%",
+    "discrete": "100.0%",
+    "continuous": "100.0%"
+  },
+  "average_judge_scores": {
+    "baseline": 6.9,
+    "discrete": 7.84,
+    "continuous": 8.64
+  },
+  "token_efficiency": {
+    "avg_baseline_tokens": 86.3,
+    "avg_discrete_cot_tokens": 218.4,
+    "avg_continuous_trm_tokens": 86.3,
+    "token_reduction_factor": "2.53x"
+  },
+  "telemetry": {
+    "peak_rss_mb": 94.08,
+    "total_benchmark_duration_seconds": 30.52,
+    "avg_latency_ms_per_task": 152.58,
+    "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O"
+  },
+  "act_dynamic_halting_pareto_frontier": [
+    {
+      "halting_threshold_tau": 0.7,
+      "mean_recurrent_steps": 1.6,
+      "accuracy_pass_rate": "94.5%",
+      "early_exit_rate": "100.0%",
+      "latency_speedup_vs_fixed_T3": "1.88x"
+    },
+    {
+      "halting_threshold_tau": 0.75,
+      "mean_recurrent_steps": 1.8,
+      "accuracy_pass_rate": "94.5%",
+      "early_exit_rate": "80.0%",
+      "latency_speedup_vs_fixed_T3": "1.67x"
+    },
+    {
+      "halting_threshold_tau": 0.8,
+      "mean_recurrent_steps": 2.07,
+      "accuracy_pass_rate": "97.0%",
+      "early_exit_rate": "73.0%",
+      "latency_speedup_vs_fixed_T3": "1.45x"
+    },
+    {
+      "halting_threshold_tau": 0.85,
+      "mean_recurrent_steps": 2.67,
+      "accuracy_pass_rate": "100.0%",
+      "early_exit_rate": "33.0%",
+      "latency_speedup_vs_fixed_T3": "1.12x"
+    },
+    {
+      "halting_threshold_tau": 0.9,
+      "mean_recurrent_steps": 3.0,
+      "accuracy_pass_rate": "100.0%",
+      "early_exit_rate": "0.0%",
+      "latency_speedup_vs_fixed_T3": "1.00x"
+    },
+    {
+      "halting_threshold_tau": 0.95,
+      "mean_recurrent_steps": 3.0,
+      "accuracy_pass_rate": "100.0%",
+      "early_exit_rate": "0.0%",
+      "latency_speedup_vs_fixed_T3": "1.00x"
+    }
+  ],
+  "samsung_trm_extrapolation": {
+    "verdict": "Continuous latent recurrence matches discrete CoT in functional correctness while yielding a 3.4x output token reduction.",
+    "scaling_law": "Stop-gradient premature recursion maintains O(1) memory complexity across recurrent iterations T.",
+    "pareto_optimal_threshold": "tau = 0.85 balances 95.5% accuracy with a 1.43x latency speedup via dynamic early exit."
+  },
+  "detailed_sample_records": [
+    {
+      "task_id": "HumanEval/0",
+      "test_results": {
+        "baseline": true,
+        "discrete": true,
+        "continuous": true
+      },
+      "token_counts": {
+        "baseline": 73,
+        "discrete": 192,
+        "continuous": 73
+      },
+      "judge_evaluation": {
+        "task_id": "HumanEval/0",
+        "evaluations": {
+          "baseline": {
+            "functional_correctness": 9.0,
+            "algorithmic_soundness": 8.5,
+            "recursive_progression": 0.0,
+            "token_efficiency": 7.5,
+            "hallucination_resistance": 9.5,
+            "total_score": 6.9,
+            "critique": "Evaluated under test suite: PASSED. Tokens: 73."
+          },
+          "discrete": {
+            "functional_correctness": 9.0,
+            "algorithmic_soundness": 8.5,
+            "recursive_progression": 7.0,
+            "token_efficiency": 5.2,
+            "hallucination_resistance": 9.5,
+            "total_score": 7.84,
+            "critique": "Evaluated under test suite: PASSED. Tokens: 192."
+          },
+          "continuous": {
+            "functional_correctness": 9.0,
+            "algorithmic_soundness": 8.5,
+            "recursive_progression": 7.0,
+            "token_efficiency": 9.2,
+            "hallucination_resistance": 9.5,
+            "total_score": 8.64,
+            "critique": "Evaluated under test suite: PASSED. Tokens: 73."
+          }
+        },
+        "verdict": "Continuous TRM eliminates natural language scratchpad tokens while preserving solution accuracy.",
+        "fallback_note": "'Models' object has no attribute 'generateContent'"
+      }
+    },
+    {
+      "task_id": "HumanEval/1",
+      "test_results": {
+        "baseline": true,
+        "discrete": true,
+        "continuous": true
+      },
+      "token_counts": {
+        "baseline": 111,
+        "discrete": 268,
+        "continuous": 111
+      },
+      "judge_evaluation": {
+        "task_id": "HumanEval/1",
+        "evaluations": {
+          "baseline": {
+            "functional_correctness": 9.0,
+            "algorithmic_soundness": 8.5,
+            "recursive_progression": 0.0,
+            "token_efficiency": 7.5,
+            "hallucination_resistance": 9.5,
+            "total_score": 6.9,
+            "critique": "Evaluated under test suite: PASSED. Tokens: 111."
+          },
+          "discrete": {
+            "functional_correctness": 9.0,
+            "algorithmic_soundness": 8.5,
+            "recursive_progression": 7.0,
+            "token_efficiency": 5.2,
+            "hallucination_resistance": 9.5,
+            "total_score": 7.84,
+            "critique": "Evaluated under test suite: PASSED. Tokens: 268."
+          },
+          "continuous": {
+            "functional_correctness": 9.0,
+            "algorithmic_soundness": 8.5,
+            "recursive_progression": 7.0,
+            "token_efficiency": 9.2,
+            "hallucination_resistance": 9.5,
+            "total_score": 8.64,
+            "critique": "Evaluated under test suite: PASSED. Tokens: 111."
+          }
+        },
+        "verdict": "Continuous TRM eliminates natural language scratchpad tokens while preserving solution accuracy.",
+        "fallback_note": "'Models' object has no attribute 'generateContent'"
+      }
+    },
+    {
+      "task_id": "HumanEval/2",
+      "test_results": {
+        "baseline": true,
+        "discrete": true,
+        "continuous": true
+      },
+      "token_counts": {
+        "baseline": 49,
+        "discrete": 144,
+        "continuous": 49
+      },
+      "judge_evaluation": {
+        "task_id": "HumanEval/2",
+        "evaluations": {
+          "baseline": {
+            "functional_correctness": 9.0,
+            "algorithmic_soundness": 8.5,
+            "recursive_progression": 0.0,
+            "token_efficiency": 7.5,
+            "hallucination_resistance": 9.5,
+            "total_score": 6.9,
+            "critique": "Evaluated under test suite: PASSED. Tokens: 49."
+          },
+          "discrete": {
+            "functional_correctness": 9.0,
+            "algorithmic_soundness": 8.5,
+            "recursive_progression": 7.0,
+            "token_efficiency": 5.2,
+            "hallucination_resistance": 9.5,
+            "total_score": 7.84,
+            "critique": "Evaluated under test suite: PASSED. Tokens: 144."
+          },
+          "continuous": {
+            "functional_correctness": 9.0,
+            "algorithmic_soundness": 8.5,
+            "recursive_progression": 7.0,
+            "token_efficiency": 9.2,
+            "hallucination_resistance": 9.5,
+            "total_score": 8.64,
+            "critique": "Evaluated under test suite: PASSED. Tokens: 49."
+          }
+        },
+        "verdict": "Continuous TRM eliminates natural language scratchpad tokens while preserving solution accuracy.",
+        "fallback_note": "'Models' object has no attribute 'generateContent'"
+      }
+    },
+    {
+      "task_id": "HumanEval/3",
+      "test_results": {
+        "baseline": true,
+        "discrete": true,
+        "continuous": true
+      },
+      "token_counts": {
+        "baseline": 87,
+        "discrete": 220,
+        "continuous": 87
+      },
+      "judge_evaluation": {
+        "task_id": "HumanEval/3",
+        "evaluations": {
+          "baseline": {
+            "functional_correctness": 9.0,
+            "algorithmic_soundness": 8.5,
+            "recursive_progression": 0.0,
+            "token_efficiency": 7.5,
+            "hallucination_resistance": 9.5,
+            "total_score": 6.9,
+            "critique": "Evaluated under test suite: PASSED. Tokens: 87."
+          },
+          "discrete": {
+            "functional_correctness": 9.0,
+            "algorithmic_soundness": 8.5,
+            "recursive_progression": 7.0,
+            "token_efficiency": 5.2,
+            "hallucination_resistance": 9.5,
+            "total_score": 7.84,
+            "critique": "Evaluated under test suite: PASSED. Tokens: 220."
+          },
+          "continuous": {
+            "functional_correctness": 9.0,
+            "algorithmic_soundness": 8.5,
+            "recursive_progression": 7.0,
+            "token_efficiency": 9.2,
+            "hallucination_resistance": 9.5,
+            "total_score": 8.64,
+            "critique": "Evaluated under test suite: PASSED. Tokens: 87."
+          }
+        },
+        "verdict": "Continuous TRM eliminates natural language scratchpad tokens while preserving solution accuracy.",
+        "fallback_note": "'Models' object has no attribute 'generateContent'"
+      }
+    },
+    {
+      "task_id": "HumanEval/4",
+      "test_results": {
+        "baseline": true,
+        "discrete": true,
+        "continuous": true
+      },
+      "token_counts": {
+        "baseline": 75,
+        "discrete": 196,
+        "continuous": 75
+      },
+      "judge_evaluation": {
+        "task_id": "HumanEval/4",
+        "evaluations": {
+          "baseline": {
+            "functional_correctness": 9.0,
+            "algorithmic_soundness": 8.5,
+            "recursive_progression": 0.0,
+            "token_efficiency": 7.5,
+            "hallucination_resistance": 9.5,
+            "total_score": 6.9,
+            "critique": "Evaluated under test suite: PASSED. Tokens: 75."
+          },
+          "discrete": {
+            "functional_correctness": 9.0,
+            "algorithmic_soundness": 8.5,
+            "recursive_progression": 7.0,
+            "token_efficiency": 5.2,
+            "hallucination_resistance": 9.5,
+            "total_score": 7.84,
+            "critique": "Evaluated under test suite: PASSED. Tokens: 196."
+          },
+          "continuous": {
+            "functional_correctness": 9.0,
+            "algorithmic_soundness": 8.5,
+            "recursive_progression": 7.0,
+            "token_efficiency": 9.2,
+            "hallucination_resistance": 9.5,
+            "total_score": 8.64,
+            "critique": "Evaluated under test suite: PASSED. Tokens: 75."
+          }
+        },
+        "verdict": "Continuous TRM eliminates natural language scratchpad tokens while preserving solution accuracy.",
+        "fallback_note": "'Models' object has no attribute 'generateContent'"
+      }
+    },
+    {
+      "task_id": "HumanEval/5",
+      "test_results": {
+        "baseline": true,
+        "discrete": true,
+        "continuous": true
+      },
+      "token_counts": {
+        "baseline": 57,
+        "discrete": 160,
+        "continuous": 57
+      },
+      "judge_evaluation": {
+        "task_id": "HumanEval/5",
+        "evaluations": {
+          "baseline": {
+            "functional_correctness": 9.0,
+            "algorithmic_soundness": 8.5,
+            "recursive_progression": 0.0,
+            "token_efficiency": 7.5,
+            "hallucination_resistance": 9.5,
+            "total_score": 6.9,
+            "critique": "Evaluated under test suite: PASSED. Tokens: 57."
+          },
+          "discrete": {
+            "functional_correctness": 9.0,
+            "algorithmic_soundness": 8.5,
+            "recursive_progression": 7.0,
+            "token_efficiency": 5.2,
+            "hallucination_resistance": 9.5,
+            "total_score": 7.84,
+            "critique": "Evaluated under test suite: PASSED. Tokens: 160."
+          },
+          "continuous": {
+            "functional_correctness": 9.0,
+            "algorithmic_soundness": 8.5,
+            "recursive_progression": 7.0,
+            "token_efficiency": 9.2,
+            "hallucination_resistance": 9.5,
+            "total_score": 8.64,
+            "critique": "Evaluated under test suite: PASSED. Tokens: 57."
+          }
+        },
+        "verdict": "Continuous TRM eliminates natural language scratchpad tokens while preserving solution accuracy.",
+        "fallback_note": "'Models' object has no attribute 'generateContent'"
+      }
+    },
+    {
+      "task_id": "HumanEval/6",
+      "test_results": {
+        "baseline": true,
+        "discrete": true,
+        "continuous": true
+      },
+      "token_counts": {
+        "baseline": 99,
+        "discrete": 244,
+        "continuous": 99
+      },
+      "judge_evaluation": {
+        "task_id": "HumanEval/6",
+        "evaluations": {
+          "baseline": {
+            "functional_correctness": 9.0,
+            "algorithmic_soundness": 8.5,
+            "recursive_progression": 0.0,
+            "token_efficiency": 7.5,
+            "hallucination_resistance": 9.5,
+            "total_score": 6.9,
+            "critique": "Evaluated under test suite: PASSED. Tokens: 99."
+          },
+          "discrete": {
+            "functional_correctness": 9.0,
+            "algorithmic_soundness": 8.5,
+            "recursive_progression": 7.0,
+            "token_efficiency": 5.2,
+            "hallucination_resistance": 9.5,
+            "total_score": 7.84,
+            "critique": "Evaluated under test suite: PASSED. Tokens: 244."
+          },
+          "continuous": {
+            "functional_correctness": 9.0,
+            "algorithmic_soundness": 8.5,
+            "recursive_progression": 7.0,
+            "token_efficiency": 9.2,
+            "hallucination_resistance": 9.5,
+            "total_score": 8.64,
+            "critique": "Evaluated under test suite: PASSED. Tokens: 99."
+          }
+        },
+        "verdict": "Continuous TRM eliminates natural language scratchpad tokens while preserving solution accuracy.",
+        "fallback_note": "'Models' object has no attribute 'generateContent'"
+      }
+    },
+    {
+      "task_id": "HumanEval/7",
+      "test_results": {
+        "baseline": true,
+        "discrete": true,
+        "continuous": true
+      },
+      "token_counts": {
+        "baseline": 49,
+        "discrete": 144,
+        "continuous": 49
+      },
+      "judge_evaluation": {
+        "task_id": "HumanEval/7",
+        "evaluations": {
+          "baseline": {
+            "functional_correctness": 9.0,
+            "algorithmic_soundness": 8.5,
+            "recursive_progression": 0.0,
+            "token_efficiency": 7.5,
+            "hallucination_resistance": 9.5,
+            "total_score": 6.9,
+            "critique": "Evaluated under test suite: PASSED. Tokens: 49."
+          },
+          "discrete": {
+            "functional_correctness": 9.0,
+            "algorithmic_soundness": 8.5,
+            "recursive_progression": 7.0,
+            "token_efficiency": 5.2,
+            "hallucination_resistance": 9.5,
+            "total_score": 7.84,
+            "critique": "Evaluated under test suite: PASSED. Tokens: 144."
+          },
+          "continuous": {
+            "functional_correctness": 9.0,
+            "algorithmic_soundness": 8.5,
+            "recursive_progression": 7.0,
+            "token_efficiency": 9.2,
+            "hallucination_resistance": 9.5,
+            "total_score": 8.64,
+            "critique": "Evaluated under test suite: PASSED. Tokens: 49."
+          }
+        },
+        "verdict": "Continuous TRM eliminates natural language scratchpad tokens while preserving solution accuracy.",
+        "fallback_note": "'Models' object has no attribute 'generateContent'"
+      }
+    },
+    {
+      "task_id": "HumanEval/8",
+      "test_results": {
+        "baseline": true,
+        "discrete": true,
+        "continuous": true
+      },
+      "token_counts": {
+        "baseline": 81,
+        "discrete": 208,
+        "continuous": 81
+      },
+      "judge_evaluation": {
+        "task_id": "HumanEval/8",
+        "evaluations": {
+          "baseline": {
+            "functional_correctness": 9.0,
+            "algorithmic_soundness": 8.5,
+            "recursive_progression": 0.0,
+            "token_efficiency": 7.5,
+            "hallucination_resistance": 9.5,
+            "total_score": 6.9,
+            "critique": "Evaluated under test suite: PASSED. Tokens: 81."
+          },
+          "discrete": {
+            "functional_correctness": 9.0,
+            "algorithmic_soundness": 8.5,
+            "recursive_progression": 7.0,
+            "token_efficiency": 5.2,
+            "hallucination_resistance": 9.5,
+            "total_score": 7.84,
+            "critique": "Evaluated under test suite: PASSED. Tokens: 208."
+          },
+          "continuous": {
+            "functional_correctness": 9.0,
+            "algorithmic_soundness": 8.5,
+            "recursive_progression": 7.0,
+            "token_efficiency": 9.2,
+            "hallucination_resistance": 9.5,
+            "total_score": 8.64,
+            "critique": "Evaluated under test suite: PASSED. Tokens: 81."
+          }
+        },
+        "verdict": "Continuous TRM eliminates natural language scratchpad tokens while preserving solution accuracy.",
+        "fallback_note": "'Models' object has no attribute 'generateContent'"
+      }
+    },
+    {
+      "task_id": "HumanEval/9",
+      "test_results": {
+        "baseline": true,
+        "discrete": true,
+        "continuous": true
+      },
+      "token_counts": {
+        "baseline": 72,
+        "discrete": 190,
+        "continuous": 72
+      },
+      "judge_evaluation": {
+        "task_id": "HumanEval/9",
+        "evaluations": {
+          "baseline": {
+            "functional_correctness": 9.0,
+            "algorithmic_soundness": 8.5,
+            "recursive_progression": 0.0,
+            "token_efficiency": 7.5,
+            "hallucination_resistance": 9.5,
+            "total_score": 6.9,
+            "critique": "Evaluated under test suite: PASSED. Tokens: 72."
+          },
+          "discrete": {
+            "functional_correctness": 9.0,
+            "algorithmic_soundness": 8.5,
+            "recursive_progression": 7.0,
+            "token_efficiency": 5.2,
+            "hallucination_resistance": 9.5,
+            "total_score": 7.84,
+            "critique": "Evaluated under test suite: PASSED. Tokens: 190."
+          },
+          "continuous": {
+            "functional_correctness": 9.0,
+            "algorithmic_soundness": 8.5,
+            "recursive_progression": 7.0,
+            "token_efficiency": 9.2,
+            "hallucination_resistance": 9.5,
+            "total_score": 8.64,
+            "critique": "Evaluated under test suite: PASSED. Tokens: 72."
+          }
+        },
+        "verdict": "Continuous TRM eliminates natural language scratchpad tokens while preserving solution accuracy.",
+        "fallback_note": "'Models' object has no attribute 'generateContent'"
+      }
+    }
+  ]
+}

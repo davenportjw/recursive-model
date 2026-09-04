@@ -47,7 +47,7 @@ substitutions:
   _LOCATION: 'us-central1'
   _REPO_NAME: 'tiny-recursive-gemma'
   _SERVICE_NAME: 'tiny-recursive-gemma-web'
-  _ALLOWED_EMAIL_DOMAINS: 'google.com,joonix.net,davenportjw@gmail.com'
+  _ALLOWED_EMAIL_DOMAINS: 'google.com,joonix.net,cloudadvocacyorg.joonix.net,davenportjw@cloudadvocacyorg.joonix.net,davenportjw@gmail.com'
   _SESSION_SECRET: 'tiny-recursive-gemma-prod-session-secret-key-32chars!'
   _BACKEND_SHARED_SECRET: 'gemma-recursive-shared-secret-2026'
 

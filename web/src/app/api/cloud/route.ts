@@ -204,7 +204,7 @@ export async function POST(request: NextRequest) {
         });
 
         const resp = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
+          model: "gemini-3.8-flash",
           contents: `You are Tiny Recursive Gemma deployed on Google Cloud Run. Provide only the Python solution for:\n${prompt}\nEnclose inside a python code block.`
         });
         generatedCode = resp.text || "";

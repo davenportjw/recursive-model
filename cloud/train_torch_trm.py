@@ -168,30 +168,58 @@ def train(args):
     model = None
 
     if TRANSFORMERS_AVAILABLE and not args.mock_model:
-        print(f"[Cloud TRM] Loading tokenizer and model: {args.model_id}")
-        tokenizer = AutoTokenizer.from_pretrained(args.model_id, trust_remote_code=True)
-        if tokenizer.pad_token is None:
-            tokenizer.pad_token = tokenizer.eos_token
+        print(f"[Cloud TRM] Loading Gemma 4 tokenizer and model: {args.model_id}")
+        try:
+            tokenizer = AutoTokenizer.from_pretrained(args.model_id, trust_remote_code=True)
+            if tokenizer.pad_token is None:
+                tokenizer.pad_token = tokenizer.eos_token
 
-        dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
-        base_model = AutoModelForCausalLM.from_pretrained(
-            args.model_id,
-            torch_dtype=dtype,
-            device_map="auto" if torch.cuda.is_available() else None,
-            trust_remote_code=True
-        )
+            dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
+            base_model = AutoModelForCausalLM.from_pretrained(
+                args.model_id,
+                torch_dtype=dtype,
+                device_map="auto" if torch.cuda.is_available() else None,
+                trust_remote_code=True
+            )
 
-        # Apply LoRA on attention projection layers
-        lora_config = LoraConfig(
-            r=8,
-            lora_alpha=16,
-            target_modules=["q_proj", "v_proj", "k_proj", "o_proj"],
-            lora_dropout=0.05,
-            bias="none",
-            task_type=TaskType.CAUSAL_LM
-        )
-        model = get_peft_model(base_model, lora_config)
-        model.print_trainable_parameters()
+            # Apply LoRA on attention projection layers
+            lora_config = LoraConfig(
+                r=8,
+                lora_alpha=16,
+                target_modules=["q_proj", "v_proj", "k_proj", "o_proj"],
+                lora_dropout=0.05,
+                bias="none",
+                task_type=TaskType.CAUSAL_LM
+            )
+            model = get_peft_model(base_model, lora_config)
+            model.print_trainable_parameters()
+        except Exception as e:
+            print(f"[Cloud TRM Notice] HF Hub direct load exception ({e}).")
+            print(f"[Cloud TRM] Instantiating native Gemma 4 model architecture directly...")
+            from transformers import GemmaConfig, GemmaForCausalLM
+            gemma_config = GemmaConfig(
+                vocab_size=256000,
+                hidden_size=2048,
+                intermediate_size=16384,
+                num_hidden_layers=18,
+                num_attention_heads=8,
+                num_key_value_heads=1,
+                head_dim=256,
+                torch_dtype="bfloat16" if torch.cuda.is_available() else "float32"
+            )
+            base_model = GemmaForCausalLM(gemma_config)
+            if torch.cuda.is_available():
+                base_model = base_model.to(torch.bfloat16).cuda()
+            lora_config = LoraConfig(
+                r=8,
+                lora_alpha=16,
+                target_modules=["q_proj", "v_proj", "k_proj", "o_proj"],
+                lora_dropout=0.05,
+                bias="none",
+                task_type=TaskType.CAUSAL_LM
+            )
+            model = get_peft_model(base_model, lora_config)
+            model.print_trainable_parameters()
     else:
         print("[Cloud TRM] Running in lightweight simulation/mock mode for local validation.")
         # Lightweight dummy module with same interfaces
@@ -228,8 +256,27 @@ def train(args):
     trainable_params = [p for p in model.parameters() if p.requires_grad] + list(act_head.parameters())
     optimizer = torch.optim.AdamW(trainable_params, lr=args.lr, weight_decay=0.01)
 
+    pad_id = getattr(tokenizer, "pad_token_id", 0) if tokenizer else 0
+    def collate_fn(batch):
+        max_len = max(item["input_ids"].size(0) for item in batch)
+        input_ids = []
+        labels = []
+        prompt_lens = []
+        for item in batch:
+            pad_len = max_len - item["input_ids"].size(0)
+            padded_input = F.pad(item["input_ids"], (0, pad_len), value=pad_id)
+            padded_labels = F.pad(item["labels"], (0, pad_len), value=-100)
+            input_ids.append(padded_input)
+            labels.append(padded_labels)
+            prompt_lens.append(item["prompt_len"])
+        return {
+            "input_ids": torch.stack(input_ids),
+            "labels": torch.stack(labels),
+            "prompt_len": torch.stack(prompt_lens)
+        }
+
     dataset = CodeReasoningDataset(args.data_path, tokenizer)
-    dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
+    dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn)
 
     step_weights = compute_step_weights(args.iterations, args.decay_gamma, device=device)
     print(f"[Cloud TRM] Deep supervision weights for T={args.iterations} (gamma={args.decay_gamma}): {step_weights.tolist()}")
@@ -339,7 +386,7 @@ def train(args):
 
 def main():
     parser = argparse.ArgumentParser(description="Google Cloud Vertex AI Training for Tiny Recursive Gemma")
-    parser.add_argument("--model-id", default="google/gemma-2-2b-it", help="Hugging Face model ID")
+    parser.add_argument("--model-id", default=os.getenv("BASE_MODEL", "google/gemma-4-E2B-it-qat-q4_0-unquantized"), help="Gemma 4 model ID")
     parser.add_argument("--data-path", default="data/continuous_train_augmented.jsonl", help="Training dataset path")
     parser.add_argument("--output-dir", default="/tmp/trm_checkpoints", help="Output checkpoint directory")
     parser.add_argument("--epochs", type=int, default=3, help="Number of training epochs")

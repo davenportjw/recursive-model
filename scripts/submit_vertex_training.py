@@ -19,7 +19,7 @@ from typing import Dict, Any, Optional
 DEFAULT_PROJECT = "davenport-boutique"
 DEFAULT_REGION = "us-central1"
 DEFAULT_BUCKET = "davenport-boutique-vertex-staging"
-DEFAULT_CONTAINER = "us-docker.pkg.dev/vertex-ai/training/pytorch-gpu.2-4.py311:latest"
+DEFAULT_CONTAINER = "us-docker.pkg.dev/vertex-ai/training/pytorch-gpu.2-4.py310:latest"
 
 GPU_CONFIGS = {
     "L4": {
@@ -46,6 +46,7 @@ def generate_job_spec(
     display_name: str,
     gcs_source_uri: str,
     gpu_type: str = "L4",
+    model_id: str = "google/gemma-4-E2B-it-qat-q4_0-unquantized",
     epochs: int = 3,
     batch_size: int = 4,
     iterations: int = 3,
@@ -66,6 +67,7 @@ def generate_job_spec(
         f"tar -xzf source.tar.gz\n"
         f"pip install -q -r cloud/requirements.txt\n"
         f"python cloud/train_torch_trm.py "
+        f"--model-id {model_id} "
         f"--epochs {epochs} "
         f"--batch-size {batch_size} "
         f"--iterations {iterations} "
@@ -128,11 +130,11 @@ def submit_vertex_job(
     job_spec: Dict[str, Any],
     dry_run: bool = False
 ) -> Dict[str, Any]:
-    """Submits the Vertex AI Custom Job using gcloud CLI."""
-    display_name = job_spec["displayName"]
-    
+    display_name = job_spec.get("displayName", f"trm-gemma-train-{int(time.time())}")
+    # gcloud ai custom-jobs create --config expects CustomJobSpec (the contents of jobSpec)
+    custom_job_spec = job_spec.get("jobSpec", job_spec)
     with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as f:
-        json.dump(job_spec, f, indent=2)
+        json.dump(custom_job_spec, f, indent=2)
         spec_file = f.name
 
     try:
@@ -191,6 +193,7 @@ def main():
     parser.add_argument("--region", default=DEFAULT_REGION, help="GCP Region")
     parser.add_argument("--staging-bucket", default=DEFAULT_BUCKET, help="GCS staging bucket")
     parser.add_argument("--gpu", default="L4", choices=["L4", "T4", "CPU"], help="Accelerator hardware")
+    parser.add_argument("--model-id", default=os.getenv("BASE_MODEL", "google/gemma-4-E2B-it-qat-q4_0-unquantized"), help="Gemma 4 model ID")
     parser.add_argument("--epochs", type=int, default=3, help="Training epochs")
     parser.add_argument("--batch-size", type=int, default=4, help="Batch size")
     parser.add_argument("--iterations", type=int, default=3, help="Recurrent steps (T)")
@@ -212,6 +215,7 @@ def main():
         display_name=display_name,
         gcs_source_uri=gcs_source,
         gpu_type=args.gpu,
+        model_id=args.model_id,
         epochs=args.epochs,
         batch_size=args.batch_size,
         iterations=args.iterations,

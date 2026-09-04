@@ -4,7 +4,7 @@
 **Live URL**: [https://tiny-recursive-gemma-web-txgsracloq-uc.a.run.app](https://tiny-recursive-gemma-web-txgsracloq-uc.a.run.app)  
 **Target GCP Project**: `davenport-boutique` (`us-central1`)  
 **Authentication**: HTTP Basic Auth (`admin` / `changeme-in-production`) & SmartRouter Shared Secret (`X-Shared-Secret`)  
-**Evaluator Engine**: Vertex AI (`gemini-2.5-flash` via Google Cloud Project Auth / ADC)  
+**Evaluator Engine**: Vertex AI (`gemini-3.8-flash` via Google Cloud Project Auth / ADC)  
 **Date**: September 2026
 
 ---

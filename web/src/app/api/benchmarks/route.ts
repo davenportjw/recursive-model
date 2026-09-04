@@ -104,6 +104,6 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     total: allTasks.length,
-    tasks: allTasks.slice(0, 50)
+    tasks: allTasks
   });
 }

@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
         location,
       });
 
-      const modelName = "gemini-2.5-flash";
+      const modelName = "gemini-3.8-flash";
 
       // 1. Run Baseline (Zero-Shot)
       const baselineResp = await ai.models.generateContent({

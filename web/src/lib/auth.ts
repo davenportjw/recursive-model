@@ -35,8 +35,11 @@ export function isEmailAuthorized(email: string, allowedList: string[]): boolean
         return true;
       }
     } else {
-      // Match entire domain suffix
-      if (normalizedEmail.endsWith("@" + entry)) {
+      // Match domain suffix (@domain.com) or any organizational subdomain (.domain.com)
+      if (
+        normalizedEmail.endsWith("@" + entry) ||
+        normalizedEmail.endsWith("." + entry)
+      ) {
         return true;
       }
     }
@@ -52,7 +55,13 @@ export function getAllowedEmailDomains(): string[] {
   if (!envVal.trim()) {
     // In local dev, default to google.com and joonix.net if not set
     if (process.env.LOCAL_DEV === "true") {
-      return ["google.com", "joonix.net", "davenportjw@gmail.com"];
+      return [
+        "google.com",
+        "joonix.net",
+        "cloudadvocacyorg.joonix.net",
+        "davenportjw@cloudadvocacyorg.joonix.net",
+        "davenportjw@gmail.com",
+      ];
     }
     return [];
   }
