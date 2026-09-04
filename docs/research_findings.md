@@ -3,7 +3,7 @@
 **Current Iteration:** Iteration 4 (September 2026)  
 **Evaluator Engine:** Google Vertex AI Gemini 3.8 Flash (`gemini-3.8-flash`) via Google Cloud Project Auth (`davenport-boutique`, `us-central1`)  
 **Base Architecture:** Google Gemma 4 2B (`google/gemma-4-E2B-it-qat-q4_0-unquantized`)  
-**Active Cloud GPU Job:** Vertex AI Custom Job `2107546782928994304` (NVIDIA L4 24GB VRAM on `g2-standard-4`)  
+**Active Cloud GPU Job:** Vertex AI Custom Job `6382799835442970624` (NVIDIA L4 24GB VRAM on `g2-standard-4`)  
 **Live Showcase URL:** [https://tiny-recursive-gemma-web-txgsracloq-uc.a.run.app](https://tiny-recursive-gemma-web-txgsracloq-uc.a.run.app)  
 **Reference Paper:** Samsung SAIL Montréal, *"Less is More: Recursive Reasoning with Tiny Networks"* (arXiv:2510.04871)  
 **Architecture Guide:** [docs/researcher_architecture_guide.md](researcher_architecture_guide.md)  
