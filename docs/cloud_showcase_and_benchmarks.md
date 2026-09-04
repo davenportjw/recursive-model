@@ -3,7 +3,7 @@
 **Deployed Service**: Google Cloud Run v2 (`tiny-recursive-gemma-web`)  
 **Live URL**: [https://tiny-recursive-gemma-web-txgsracloq-uc.a.run.app](https://tiny-recursive-gemma-web-txgsracloq-uc.a.run.app)  
 **Target GCP Project**: `davenport-boutique` (`us-central1`)  
-**Authentication**: HTTP Basic Auth (`admin` / `changeme-in-production`) & SmartRouter Shared Secret (`X-Shared-Secret`)  
+**Authentication**: SmartRouter Email/Domain-Controlled Auth (`ALLOWED_EMAIL_DOMAINS` including `cloudadvocacyorg.joonix.net`, `joonix.net`, `google.com`) & Machine-to-Machine Secret (`X-Shared-Secret`)  
 **Evaluator Engine**: Vertex AI (`gemini-3.8-flash` via Google Cloud Project Auth / ADC)  
 **Date**: September 2026
 
@@ -19,13 +19,14 @@ This document synthesizes the empirical findings and cloud architecture for **Ti
 ```mermaid
 graph TD
     subgraph Client ["Client Layer"]
-        Browser["Web Browser (Next.js App)"]
+        Browser["Web Browser (Google Sign-In)"]
         APIClient["Programmatic REST Client"]
     end
 
     subgraph SecurityGate ["Security & Middleware Gate"]
         MW["web/src/middleware.ts"]
-        BasicAuth["RFC 7617 Basic Auth<br/>(admin : changeme-in-production)"]
+        DomainAuth["SmartRouter Email/Domain Auth<br/>(ALLOWED_EMAIL_DOMAINS)"]
+        SessionCookie["HMAC-SHA256 Session Cookie<br/>(5-day expiry)"]
         SharedSecret["SmartRouter Shared Secret<br/>(X-Shared-Secret / Bearer)"]
         LocalBypass["LOCAL_DEV='true' Bypass"]
     end
