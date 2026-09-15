@@ -132,3 +132,33 @@ def guarded_memory_scope(
         yield get_metal_memory_stats()
     finally:
         flush_memory()
+
+def verify_recursion_guardrails(
+    recurrent_layer_count: int = 2, 
+    iterations_T: int = 1, 
+    reasoning_steps_n: int = 1,
+    allow_override: bool = False,
+    recurrent_layers: Optional[int] = None,
+    iterations: Optional[int] = None,
+) -> bool:
+    """
+    Guards against unrolling heavy multi-layer recurrence on Apple Silicon unified memory.
+    Enforces Top-K layer recycling (recurrent_layer_count <= 4) or low iteration depth.
+    Full 18-layer Gemma unrolling over multiple steps is blocked to protect macOS kernel stability.
+    """
+    if recurrent_layers is not None:
+        recurrent_layer_count = recurrent_layers
+    if iterations is not None:
+        iterations_T = iterations
+
+    total_layer_passes = recurrent_layer_count * iterations_T * reasoning_steps_n
+    MAX_SAFE_LOCAL_LAYER_PASSES = 36  # Safe ceiling for local testing
+    
+    if total_layer_passes > MAX_SAFE_LOCAL_LAYER_PASSES and not allow_override:
+        raise RuntimeError(
+            f"[MemoryGuard Security] Heavy recurrence requested: {recurrent_layer_count} layers x "
+            f"{iterations_T} iters x {reasoning_steps_n} steps = {total_layer_passes} layer passes. "
+            f"Local Apple Silicon limit is {MAX_SAFE_LOCAL_LAYER_PASSES} layer passes. "
+            f"Use Top-K layer recycling (recurrent_layer_count <= 2) or run on Google Cloud Vertex AI Custom Training (NVIDIA L4)."
+        )
+    return True

@@ -123,6 +123,7 @@ def generate_continuous(
     iterations: int = 5,
     dual_latent: bool = True,
     reasoning_steps: int = 3,
+    recurrent_layers: int = 2,
     halting_head: Optional[ACTHaltingHead] = None,
     halt_threshold: float = 0.85,
     min_iterations: int = 2,
@@ -139,6 +140,7 @@ def generate_continuous(
         iterations: Maximum number of continuous latent recurrence iterations (T_max).
         dual_latent: Whether to use separate reasoning (z) and solution (y) states.
         reasoning_steps: Number of reasoning inner steps (n) per iteration in dual mode.
+        recurrent_layers: Number of top transformer layers to recycle (Top-K layer recycling).
         halting_head: Optional ACTHaltingHead module for adaptive computation time halting.
         halt_threshold: Halting probability threshold to trigger early exit (tau).
         min_iterations: Minimum number of recurrence steps before allowing early exit.
@@ -173,6 +175,23 @@ def generate_continuous(
         z = mx.zeros((1, 1, hidden_dim))
         y = mx.zeros((1, 1, hidden_dim))
         
+        # Check if Top-K layer recycling can be used
+        use_layer_recycling = (
+            recurrent_layers > 0 
+            and hasattr(transformer, "layers") 
+            and 0 < recurrent_layers < len(transformer.layers)
+        )
+        if use_layer_recycling:
+            base_layers = transformer.layers[:-recurrent_layers]
+            top_layers = transformer.layers[-recurrent_layers:]
+            h_base = prompt_embeds
+            for layer in base_layers:
+                h_base = layer(h_base)
+        else:
+            base_layers = None
+            top_layers = None
+            h_base = None
+
         for iter_idx in range(iterations):
             iterations_completed = iter_idx + 1
             
@@ -180,16 +199,34 @@ def generate_continuous(
             for _ in range(reasoning_steps):
                 y_inj = rms_norm(y) if normalize_latents else y
                 z_inj = rms_norm(z) if normalize_latents else z
-                injected = mx.concatenate([prompt_embeds, y_inj, z_inj], axis=1)
-                _, hidden_states = get_logits(model, transformer, lm, injected)
-                z = hidden_states[:, -1:, :]
+                if use_layer_recycling:
+                    injected = mx.concatenate([h_base, y_inj, z_inj], axis=1)
+                    h = injected
+                    for layer in top_layers:
+                        h = layer(h)
+                    if hasattr(transformer, "norm") and transformer.norm is not None:
+                        h = transformer.norm(h)
+                    z = h[:, -1:, :]
+                else:
+                    injected = mx.concatenate([prompt_embeds, y_inj, z_inj], axis=1)
+                    _, hidden_states = get_logits(model, transformer, lm, injected)
+                    z = hidden_states[:, -1:, :]
             
             # 2. Update solution state y (1 time)
             z_inj = rms_norm(z) if normalize_latents else z
             y_inj = rms_norm(y) if normalize_latents else y
-            injected = mx.concatenate([prompt_embeds, z_inj, y_inj], axis=1)
-            _, hidden_states = get_logits(model, transformer, lm, injected)
-            y = hidden_states[:, -1:, :]
+            if use_layer_recycling:
+                injected = mx.concatenate([h_base, z_inj, y_inj], axis=1)
+                h = injected
+                for layer in top_layers:
+                    h = layer(h)
+                if hasattr(transformer, "norm") and transformer.norm is not None:
+                    h = transformer.norm(h)
+                y = h[:, -1:, :]
+            else:
+                injected = mx.concatenate([prompt_embeds, z_inj, y_inj], axis=1)
+                _, hidden_states = get_logits(model, transformer, lm, injected)
+                y = hidden_states[:, -1:, :]
 
             # Force evaluation and flush unused GPU buffers to protect Apple Silicon unified memory
             mx.eval(z, y)
@@ -299,9 +336,11 @@ class ContinuousLatentPipeline:
         tokenizer: Optional[Any] = None,
         lora_layers: int = 2,
         lora_config: Optional[dict] = None,
-        enable_act: bool = False
+        enable_act: bool = False,
+        recurrent_layers: int = 2
     ):
         init_memory_guardrails()
+        self.recurrent_layers = recurrent_layers
         if model is not None and tokenizer is not None:
             self.model = model
             self.tokenizer = tokenizer
@@ -363,11 +402,13 @@ class ContinuousLatentPipeline:
         iterations: int = 5, 
         dual_latent: bool = True, 
         reasoning_steps: int = 3,
+        recurrent_layers: Optional[int] = None,
         halt_threshold: float = 0.85,
         min_iterations: int = 2,
         normalize_latents: bool = True,
         return_telemetry: bool = False
     ) -> Union[str, Tuple[str, Dict[str, Any]]]:
+        rec_layers = self.recurrent_layers if recurrent_layers is None else recurrent_layers
         return generate_continuous(
             self.model, 
             self.tokenizer, 
@@ -376,6 +417,7 @@ class ContinuousLatentPipeline:
             iterations=iterations, 
             dual_latent=dual_latent, 
             reasoning_steps=reasoning_steps,
+            recurrent_layers=rec_layers,
             halting_head=self.halting_head,
             halt_threshold=halt_threshold,
             min_iterations=min_iterations,

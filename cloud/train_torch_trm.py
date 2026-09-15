@@ -39,20 +39,23 @@ except ImportError:
 
 
 class ACTHaltingHead(nn.Module):
-    """Adaptive Computation Time Halting classifier head."""
+    """Adaptive Computation Time Halting classifier head over dual latents (y, z)."""
     def __init__(self, hidden_size: int):
         super().__init__()
         self.head = nn.Sequential(
-            nn.Linear(hidden_size, 256),
+            nn.Linear(hidden_size * 2, 256),
             nn.GELU(),
             nn.Linear(256, 1),
             nn.Sigmoid()
         )
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # x: [batch, hidden_size] or [batch, 1, hidden_size]
-        if x.dim() == 3:
-            x = x.squeeze(1)
+    def forward(self, y: torch.Tensor, z: torch.Tensor) -> torch.Tensor:
+        # y, z: [batch, 1, hidden_size] or [batch, hidden_size]
+        if y.dim() == 3:
+            y = y.squeeze(1)
+        if z.dim() == 3:
+            z = z.squeeze(1)
+        x = torch.cat([y, z], dim=-1)
         return self.head(x).squeeze(-1)
 
 
@@ -99,23 +102,37 @@ class CodeReasoningDataset(Dataset):
             prompt_enc = self.tokenizer(prompt, truncation=True, max_length=self.max_length, return_tensors="pt")
             full_enc = self.tokenizer(full_text, truncation=True, max_length=self.max_length, return_tensors="pt")
             
-            input_ids = full_enc["input_ids"].squeeze(0)
-            labels = input_ids.clone()
-            # Mask prompt tokens with -100
-            prompt_len = prompt_enc["input_ids"].shape[1]
-            labels[:prompt_len] = -100
+            p_ids = prompt_enc["input_ids"].squeeze(0)
+            f_ids = full_enc["input_ids"].squeeze(0)
+            prompt_len = p_ids.shape[0]
+            
+            # Ground truth target tokens
+            target_ids = f_ids[prompt_len:]
+            if len(target_ids) == 0:
+                eos_id = getattr(self.tokenizer, "eos_token_id", 1)
+                target_ids = torch.tensor([eos_id if eos_id is not None else 1], dtype=torch.long)
+
+            # Input target tokens (shifted for next-token prediction)
+            pad_id = getattr(self.tokenizer, "pad_token_id", 0)
+            pad_id = pad_id if pad_id is not None else 0
+            if len(target_ids) > 1:
+                target_ids_input = torch.cat([torch.tensor([pad_id], dtype=torch.long), target_ids[:-1]])
+            else:
+                target_ids_input = torch.tensor([pad_id], dtype=torch.long)
 
             return {
-                "input_ids": input_ids,
-                "labels": labels,
+                "prompt_ids": p_ids,
+                "target_ids": target_ids,
+                "target_ids_input": target_ids_input,
                 "prompt_len": torch.tensor(prompt_len, dtype=torch.long)
             }
         else:
-            # Synthetic tensor fallback
+            # Synthetic tensor fallback for mock runs
             return {
-                "input_ids": torch.randint(10, 1000, (64,)),
-                "labels": torch.randint(10, 1000, (64,)),
-                "prompt_len": torch.tensor(20, dtype=torch.long)
+                "prompt_ids": torch.randint(10, 1000, (16,)),
+                "target_ids": torch.randint(10, 1000, (16,)),
+                "target_ids_input": torch.randint(10, 1000, (16,)),
+                "prompt_len": torch.tensor(16, dtype=torch.long)
             }
 
 
@@ -257,21 +274,37 @@ def train(args):
     optimizer = torch.optim.AdamW(trainable_params, lr=args.lr, weight_decay=0.01)
 
     pad_id = getattr(tokenizer, "pad_token_id", 0) if tokenizer else 0
+    pad_id = pad_id if pad_id is not None else 0
+
     def collate_fn(batch):
-        max_len = max(item["input_ids"].size(0) for item in batch)
-        input_ids = []
-        labels = []
+        max_prompt_len = max(item["prompt_ids"].size(0) for item in batch)
+        max_target_len = max(item["target_ids"].size(0) for item in batch)
+
+        prompt_ids_list = []
+        target_ids_list = []
+        target_ids_input_list = []
         prompt_lens = []
+
         for item in batch:
-            pad_len = max_len - item["input_ids"].size(0)
-            padded_input = F.pad(item["input_ids"], (0, pad_len), value=pad_id)
-            padded_labels = F.pad(item["labels"], (0, pad_len), value=-100)
-            input_ids.append(padded_input)
-            labels.append(padded_labels)
+            p_len = item["prompt_ids"].size(0)
+            t_len = item["target_ids"].size(0)
+
+            pad_p = max_prompt_len - p_len
+            padded_p = F.pad(item["prompt_ids"], (0, pad_p), value=pad_id)
+
+            pad_t = max_target_len - t_len
+            padded_t = F.pad(item["target_ids"], (0, pad_t), value=-100)
+            padded_t_in = F.pad(item["target_ids_input"], (0, pad_t), value=pad_id)
+
+            prompt_ids_list.append(padded_p)
+            target_ids_list.append(padded_t)
+            target_ids_input_list.append(padded_t_in)
             prompt_lens.append(item["prompt_len"])
+
         return {
-            "input_ids": torch.stack(input_ids),
-            "labels": torch.stack(labels),
+            "prompt_ids": torch.stack(prompt_ids_list),
+            "target_ids": torch.stack(target_ids_list),
+            "target_ids_input": torch.stack(target_ids_input_list),
             "prompt_len": torch.stack(prompt_lens)
         }
 
@@ -292,13 +325,15 @@ def train(args):
 
         for batch_idx, batch in enumerate(dataloader):
             optimizer.zero_grad()
-            input_ids = batch["input_ids"].to(device)
-            labels = batch["labels"].to(device)
-            
-            # Embeddings
+            prompt_ids = batch["prompt_ids"].to(device)
+            target_ids = batch["target_ids"].to(device)
+            target_ids_in = batch["target_ids_input"].to(device)
+
             embed_fn = model.get_input_embeddings()
-            inputs_embeds = embed_fn(input_ids)
-            B, L, D = inputs_embeds.shape
+            prompt_embeds = embed_fn(prompt_ids)
+            target_embeds_in = embed_fn(target_ids_in)
+            B, Lp, D = prompt_embeds.shape
+            _, Lt, _ = target_embeds_in.shape
 
             # Initialize continuous latents z (reasoning) and y (solution)
             z = torch.zeros(B, 1, D, device=device)
@@ -316,8 +351,8 @@ def train(args):
                 for _ in range(args.reasoning_steps):
                     z_in = F.rms_norm(z_in, (D,))
                     y_in = F.rms_norm(y_in, (D,))
-                    # Prefix injection
-                    step_embeds = torch.cat([inputs_embeds, y_in, z_in], dim=1)
+                    # Injected: [prompt, y, z] -> hidden state at z updates z
+                    step_embeds = torch.cat([prompt_embeds, y_in, z_in], dim=1)
                     outputs = model(inputs_embeds=step_embeds, output_hidden_states=True)
                     if hasattr(outputs, "hidden_states") and outputs.hidden_states is not None:
                         h = outputs.hidden_states[-1]
@@ -326,24 +361,44 @@ def train(args):
                     if h is not None and h.shape[-1] == D:
                         z_in = h[:, -1:, :]
                     else:
-                        z_in = outputs.logits[:, -1:, :D]  # Fallback if hidden states unavailable
+                        z_in = outputs.logits[:, -1:, :D]
+
+                # Solution step: update y 1 time
+                z_in = F.rms_norm(z_in, (D,))
+                y_in = F.rms_norm(y_in, (D,))
+                step_embeds = torch.cat([prompt_embeds, z_in, y_in], dim=1)
+                outputs = model(inputs_embeds=step_embeds, output_hidden_states=True)
+                if hasattr(outputs, "hidden_states") and outputs.hidden_states is not None:
+                    h = outputs.hidden_states[-1]
+                else:
+                    h = getattr(outputs, "last_hidden_state", None)
+                if h is not None and h.shape[-1] == D:
+                    y_in = h[:, -1:, :]
+                else:
+                    y_in = outputs.logits[:, -1:, :D]
 
                 z = z_in
-                # Update solution state y
-                y = F.rms_norm(y_in, (D,))
+                y = y_in
 
-                # Emitted generation cross-entropy loss on target labels (ignoring prompt tokens masked with -100)
-                step_logits = outputs.logits[:, :L, :]
+                # Target generation: [prompt_embeds, z, y, target_embeds_in]
+                # Under causal attention, target tokens attend to prompt AND (z, y)
+                z_inj = F.rms_norm(z, (D,))
+                y_inj = F.rms_norm(y, (D,))
+                full_embeds = torch.cat([prompt_embeds, z_inj, y_inj, target_embeds_in], dim=1)
+                gen_outputs = model(inputs_embeds=full_embeds)
+                
+                # Target logits start at prefix_len - 1 = Lp + 1 (the y position predicting first target token)
+                prefix_len = Lp + 2
+                target_logits = gen_outputs.logits[:, prefix_len - 1 : prefix_len - 1 + Lt, :]
                 loss_step = F.cross_entropy(
-                    step_logits.reshape(-1, step_logits.size(-1)),
-                    labels.reshape(-1),
+                    target_logits.reshape(-1, target_logits.size(-1)),
+                    target_ids.reshape(-1),
                     ignore_index=-100
                 )
 
-                # ACT Halting head prediction and BCE loss
+                # ACT Halting head prediction and BCE loss over dual latents (y, z)
                 if args.act:
-                    halt_prob = act_head(z)
-                    # Ideal halt target: 1.0 on last step, 0.0 before
+                    halt_prob = act_head(y, z)
                     target_halt = torch.ones_like(halt_prob) if t == args.iterations else torch.zeros_like(halt_prob)
                     bce_loss = F.binary_cross_entropy(halt_prob, target_halt)
                 else:
@@ -410,6 +465,7 @@ def main():
     parser.add_argument("--act", action="store_true", default=True, help="Enable ACT halting head training")
     parser.add_argument("--act-loss-weight", type=float, default=0.1, help="Weight for ACT BCE loss")
     parser.add_argument("--gcs-output-bucket", default="davenport-boutique-vertex-staging", help="GCS bucket for checkpoint export")
+    parser.add_argument("--recurrent-layers", type=int, default=2, help="Number of top transformer layers to recycle in recurrent loop (0 for full model unroll)")
     parser.add_argument("--mock-model", action="store_true", help="Use lightweight mock model for local testing")
     args = parser.parse_args()
 

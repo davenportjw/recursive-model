@@ -208,14 +208,17 @@ def evaluate_with_gemini(
         )
         return json.loads(response.text)
     except Exception as e:
-        print(f"Warning: Gemini judge evaluation failed for {task_id}: {e}. Falling back to rule-based mock.")
-        return mock_judge_evaluate(task_id, candidates, test_results)
+        print(f"Error: Gemini judge evaluation failed for {task_id}: {e}")
+        raise
 
 def run_benchmark_comparison(
     dataset_path: str = "eval/benchmark_suite_200.jsonl" if os.path.exists("eval/benchmark_suite_200.jsonl") else "eval/complex_tasks.jsonl",
     output_report: str = "eval/samsung_trm_benchmark_report.json",
     mock_run: bool = False,
-    max_samples: int = 5
+    max_samples: int = 5,
+    baseline_generator: Optional[Any] = None,
+    discrete_generator: Optional[Any] = None,
+    continuous_generator: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """Executes comparative evaluation across Baseline, Discrete CoT, and Continuous TRM."""
     load_dotenv()
@@ -239,20 +242,29 @@ def run_benchmark_comparison(
         prompt = task["prompt"]
         test_code = task.get("test", "")
         entry_point = task.get("entry_point", "")
-        canonical = task.get("canonical_solution", "")
 
-        # Generate or simulate candidate outputs across 3 paradigms
-        # In mock or benchmark setup without local model weights, we use canonical and perturbed solutions
-        candidates = {
-            "baseline": f"{prompt}\n    # Baseline zero-shot completion\n{canonical}",
-            "discrete": (
-                f"<thought>\nAnalyzing requirements: We need an optimal approach handling all constraints.\n"
-                f"Checking edge cases and recursive boundary conditions...\n"
-                f"Validating complexity guarantees.\n</thought>\n"
-                f"<code_update>\n{prompt}\n{canonical}\n</code_update>"
-            ),
-            "continuous": f"{prompt}\n{canonical}"
-        }
+        # Candidate solutions: Real model generation or honest dry-run stub
+        # Per AGENTS.md Directives 4 & 5: Never inject canonical_solution into evaluated candidates!
+        if "candidates" in task:
+            candidates = task["candidates"]
+        elif baseline_generator or discrete_generator or continuous_generator:
+            candidates = {
+                "baseline": baseline_generator(prompt) if baseline_generator else f"{prompt}\n    return None",
+                "discrete": discrete_generator(prompt) if discrete_generator else f"{prompt}\n    return None",
+                "continuous": continuous_generator(prompt) if continuous_generator else f"{prompt}\n    return None"
+            }
+        elif mock_run:
+            # Dry run: neutral stub verifying test runner & judge connectivity (pass rate truthfully 0%)
+            candidates = {
+                "baseline": f"{prompt}\n    # Dry-run stub\n    return None",
+                "discrete": f"<thought>\nDry-run\n</thought>\n{prompt}\n    return None",
+                "continuous": f"{prompt}\n    return None"
+            }
+        else:
+            raise RuntimeError(
+                f"No candidate generator or precomputed candidates provided for {task_id}. "
+                "Per Directives 4 & 5, real model outputs are required. Use real model pipelines or --mock-run."
+            )
 
         # Token length approximations (~4 chars/token heuristic or whitespace split)
         for m_key, code in candidates.items():

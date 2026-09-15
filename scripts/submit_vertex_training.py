@@ -24,7 +24,7 @@ DEFAULT_CONTAINER = "us-docker.pkg.dev/vertex-ai/training/pytorch-gpu.2-4.py310:
 GPU_CONFIGS = {
     "L4": {
         "accelerator_type": "NVIDIA_L4",
-        "machine_type": "g2-standard-4",
+        "machine_type": "g2-standard-12",
         "accelerator_count": 1,
         "vram": "24GB"
     },
@@ -53,6 +53,7 @@ def generate_job_spec(
     reasoning_steps: int = 2,
     decay_gamma: float = 1.5,
     act: bool = True,
+    recurrent_layers: int = 2,
     output_bucket: str = DEFAULT_BUCKET
 ) -> Dict[str, Any]:
     gpu_info = GPU_CONFIGS.get(gpu_type.upper(), GPU_CONFIGS["L4"])
@@ -73,6 +74,7 @@ def generate_job_spec(
         f"--iterations {iterations} "
         f"--reasoning-steps {reasoning_steps} "
         f"--decay-gamma {decay_gamma} "
+        f"--recurrent-layers {recurrent_layers} "
         f"{'--act' if act else ''} "
         f"--gcs-output-bucket {output_bucket}\n"
     ]
@@ -200,6 +202,7 @@ def main():
     parser.add_argument("--reasoning-steps", type=int, default=2, help="Reasoning steps (n)")
     parser.add_argument("--decay-gamma", type=float, default=1.5, help="Deep supervision decay gamma")
     parser.add_argument("--act", action="store_true", default=True, help="Enable ACT halting")
+    parser.add_argument("--recurrent-layers", type=int, default=2, help="Recurrent layers to unroll (Top-K recycling)")
     parser.add_argument("--dry-run", action="store_true", help="Print job spec without submitting")
     args = parser.parse_args()
 
@@ -222,6 +225,7 @@ def main():
         reasoning_steps=args.reasoning_steps,
         decay_gamma=args.decay_gamma,
         act=args.act,
+        recurrent_layers=args.recurrent_layers,
         output_bucket=args.staging_bucket
     )
 

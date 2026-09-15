@@ -240,35 +240,34 @@ def mock_judge_fallback(
 def compute_act_pareto_frontier(tasks_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Evaluates Adaptive Computation Time (ACT) dynamic halting across thresholds tau in [0.70, 0.95].
-    Returns accuracy vs mean iteration steps tradeoff curve.
+    Returns accuracy vs mean iteration steps tradeoff curve grounded in actual model telemetry.
     """
     thresholds = [0.70, 0.75, 0.80, 0.85, 0.90, 0.95]
     frontier = []
     
+    # Check if real ACT probabilities exist in task telemetry
+    has_telemetry = any("act_halt_probs" in t or "telemetry" in t for t in tasks_data)
+    if not has_telemetry:
+        print("[ACT Frontier] Warning: No real ACT halting telemetry found in tasks. Skipping synthetic simulation per Directives 4 & 5.")
+        return []
+
     for tau in thresholds:
         steps_taken = []
         passes = 0
         total = len(tasks_data)
         
         for idx, task in enumerate(tasks_data):
-            # Model halting probability h_t evolves over T=1..3
-            # Tasks of varying complexity halt at different steps
-            h1 = 0.55 + 0.35 * ((idx % 5) / 5.0)
-            h2 = 0.72 + 0.25 * ((idx % 3) / 3.0)
-            h3 = 0.96
-            
-            if h1 >= tau:
+            probs = task.get("act_halt_probs") or task.get("telemetry", {}).get("halting_probabilities", [])
+            step = len(probs) if probs else 3
+            for s_idx, p in enumerate(probs):
+                if p >= tau:
+                    step = s_idx + 1
+                    break
+            if step == 0:
                 step = 1
-            elif h2 >= tau:
-                step = 2
-            else:
-                step = 3
                 
             steps_taken.append(step)
-            # Higher step gives higher chance of correctness on harder tasks
-            passed = task["test_results"]["continuous"]
-            if step == 1 and idx % 7 == 0:
-                passed = False # Undershot reasoning on complex edge case
+            passed = task.get("test_results", {}).get("continuous", False)
             if passed:
                 passes += 1
                 
